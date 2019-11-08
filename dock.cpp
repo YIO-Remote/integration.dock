@@ -21,7 +21,7 @@ void Dock::create(const QVariantMap &config, QObject *entities, QObject *notific
         QMap<QString, QVariantMap>::iterator i;
         for (i = services.begin(); i != services.end(); i++)
         {
-            DockBase* db = new DockBase();
+            DockBase* db = new DockBase(this);
             db->setup(i.value(), entities, notifications, api, configObj);
 
             QVariantMap d;
@@ -37,6 +37,11 @@ void Dock::create(const QVariantMap &config, QObject *entities, QObject *notific
 
     // start the MDNS discovery
     m_api->discoverNetworkServices(mdns);
+}
+
+DockBase::DockBase(QObject* parent)
+{
+    this->setParent(parent);
 }
 
 void DockBase::setup(const QVariantMap& config, QObject* entities, QObject* notifications, QObject* api, QObject* configObj)
@@ -278,6 +283,24 @@ void DockThread::sendCommand(const QString &type, const QString &entity_id, cons
             m_socket->sendTextMessage(message);
         }
 
+    }
+    // commands that does not have entity
+    if (type == "dock") {
+        if (command == "REMOTE_CHARGED") {
+            QVariantMap msg;
+            msg.insert("type", QVariant("dock"));
+            msg.insert("command", QVariant("remote_charged"));
+            QJsonDocument doc = QJsonDocument::fromVariant(msg);
+            QString message = doc.toJson(QJsonDocument::JsonFormat::Compact);
+            m_socket->sendTextMessage(message);
+        } else if (command == "REMOTE_LOWBATTERY") {
+            QVariantMap msg;
+            msg.insert("type", QVariant("dock"));
+            msg.insert("command", QVariant("remote_lowbattery"));
+            QJsonDocument doc = QJsonDocument::fromVariant(msg);
+            QString message = doc.toJson(QJsonDocument::JsonFormat::Compact);
+            m_socket->sendTextMessage(message);
+        }
     }
 }
 
