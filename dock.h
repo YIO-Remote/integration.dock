@@ -96,6 +96,7 @@ private:
     void webSocketSendCommand	    (const QString& domain, const QString& service, const QString& entity_id, QVariantMap *data);
     void updateEntity               (const QString& entity_id, const QVariantMap& attr);
     void setState                   (int state);
+    QString findIRCode              (const QString& feature, QVariantList& list);
 
     EntitiesInterface*              m_entities;
     NotificationsInterface*         m_notifications;

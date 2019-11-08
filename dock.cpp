@@ -4,6 +4,8 @@
 
 #include "dock.h"
 #include "math.h"
+#include "../remote-software/sources/entities/entity.h"
+#include "../remote-software/sources/entities/remote.h"
 
 void Dock::create(const QVariantMap &config, QObject *entities, QObject *notifications, QObject *api, QObject *configObj)
 {
@@ -188,25 +190,25 @@ void DockThread::onTimeout()
 
 void DockThread::webSocketSendCommand(const QString& domain, const QString& service, const QString& entity_id, QVariantMap *data)
 {
-    // sends a command to home assistant
+//    // sends a command to the YIO dock
 
-    QVariantMap map;
-    map.insert("type", QVariant("call_service"));
-    map.insert("domain", QVariant(domain));
-    map.insert("service", QVariant(service));
+//    QVariantMap map;
+//    map.insert("type", QVariant("call_service"));
+//    map.insert("domain", QVariant(domain));
+//    map.insert("service", QVariant(service));
 
-    if (data == NULL) {
-        QVariantMap d;
-        d.insert("entity_id", QVariant(entity_id));
-        map.insert("service_data", d);
-    }
-    else {
-        data->insert("entity_id", QVariant(entity_id));
-        map.insert("service_data", *data);
-    }
-    QJsonDocument doc = QJsonDocument::fromVariant(map);
-    QString message = doc.toJson(QJsonDocument::JsonFormat::Compact);
-    m_socket->sendTextMessage(message);
+//    if (data == NULL) {
+//        QVariantMap d;
+//        d.insert("entity_id", QVariant(entity_id));
+//        map.insert("service_data", d);
+//    }
+//    else {
+//        data->insert("entity_id", QVariant(entity_id));
+//        map.insert("service_data", *data);
+//    }
+//    QJsonDocument doc = QJsonDocument::fromVariant(map);
+//    QString message = doc.toJson(QJsonDocument::JsonFormat::Compact);
+//    m_socket->sendTextMessage(message);
 
 }
 
@@ -252,57 +254,44 @@ void DockThread::disconnect()
 
 void DockThread::sendCommand(const QString &type, const QString &entity_id, const QString &command, const QVariant &param)
 {
-    if (type == "light") {
-        if (command == "TOGGLE")
-            webSocketSendCommand(type, "toggle", entity_id, NULL);
-        else if (command == "ON")
-            webSocketSendCommand(type, "turn_on", entity_id, NULL);
-        else if (command == "OFF")
-            webSocketSendCommand(type, "turn_off", entity_id, NULL);
-        else if (command == "BRIGHTNESS") {
-            QVariantMap data;
-            data.insert("brightness_pct", param);
-            webSocketSendCommand(type, "turn_on", entity_id, &data);
+    if (type == "remote") {
+
+        // get the remote enityt from the entity database
+        Remote* entity = (Remote*)m_entities->get(entity_id);
+
+        // get all the commands the entity can do (IR codes)
+        QVariantList commands = entity->commands();
+
+        // find the IR code that matches the command we got from the UI
+        QString IRcommand = findIRCode(command, commands);
+
+        // send the request to the dock
+        QVariantMap msg;
+        msg.insert("type", QVariant("dock"));
+        msg.insert("command", QVariant("ir_send"));
+        msg.insert("code", IRcommand);
+        QJsonDocument doc = QJsonDocument::fromVariant(msg);
+        QString message = doc.toJson(QJsonDocument::JsonFormat::Compact);
+
+        if (command != "") {
+            // send the message through the websocket api
+            m_socket->sendTextMessage(message);
         }
-        else if (command == "COLOR") {
-            QColor color = param.value<QColor>();
-            QVariantMap data;
-            QVariantList list;
-            list.append(color.red());
-            list.append(color.green());
-            list.append(color.blue());
-            data.insert("rgb_color", list);
-            webSocketSendCommand(type, "turn_on", entity_id, &data);
+
+    }
+}
+
+QString DockThread::findIRCode(const QString &feature, QVariantList& list)
+{
+    QString r = "";
+
+    for (int i = 0; i < list.length(); i++) {
+        QVariantMap map =  list[i].toMap();
+
+        if (map.value("button_map").toString() == feature) {
+            r = map.value("code").toString();
         }
     }
-    if (type == "blind") {
-        if (command == "OPEN")
-            webSocketSendCommand("cover", "open_cover", entity_id, NULL);
-        else if (command == "CLOSE")
-            webSocketSendCommand("cover", "close_cover", entity_id, NULL);
-        else if (command == "STOP")
-            webSocketSendCommand("cover", "stop_cover", entity_id, NULL);
-        else if (command == "POSITION") {
-            QVariantMap data;
-            data.insert("position", param);
-            webSocketSendCommand("cover", "set_cover_position", entity_id, &data);
-        }
-    }
-    if (type == "media_player") {
-        if (command == "VOLUME_SET") {
-            QVariantMap data;
-            data.insert("volume_level", param);
-            webSocketSendCommand(type, "volume_set", entity_id, &data);
-        }
-        else if (command == "PLAY")
-            webSocketSendCommand(type, "media_play_pause", entity_id, NULL);
-        else if (command == "PREVIOUS")
-            webSocketSendCommand(type, "media_previous_track", entity_id, NULL);
-        else if (command == "NEXT")
-            webSocketSendCommand(type, "media_next_track", entity_id, NULL);
-        else if (command == "TURNON")
-            webSocketSendCommand(type, "turn_on", entity_id, NULL);
-        else if (command == "TURNOFF")
-            webSocketSendCommand(type, "turn_off", entity_id, NULL);
-    }
+
+    return r;
 }
