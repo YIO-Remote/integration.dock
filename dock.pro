@@ -11,13 +11,17 @@ isEmpty(REMOTE_SRC) {
     message("YIO_SRC is set: using '$$REMOTE_SRC' for remote-software project.")
 }
 
-include($$REMOTE_SRC/qmake-target-platform.pri)
-include($$REMOTE_SRC/qmake-destination-path.pri)
+! include($$REMOTE_SRC/qmake-target-platform.pri) {
+    error( "Couldn't find the qmake-target-platform.pri file!" )
+}
+! include($$REMOTE_SRC/qmake-destination-path.pri) {
+    error( "Couldn't find the qmake-destination-path.pri file!" )
+}
 
 HEADERS         = dock.h \
                   $$REMOTE_SRC/sources/integrations/integration.h \
-                  $$REMOTE_SRC/sources/integrations/integrationinterface.h
-                  $$REMOTE_SR/sources/yioapiinterface.h
+                  $$REMOTE_SRC/sources/integrations/integrationinterface.h \
+                  $$REMOTE_SRC/sources/yioapiinterface.h
 SOURCES         = dock.cpp
 TARGET          = dock
 
