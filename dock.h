@@ -11,6 +11,11 @@
 
 #include "../remote-software/sources/integrations/integration.h"
 #include "../remote-software/sources/integrations/integrationinterface.h"
+#include "../remote-software/sources/entities/entitiesinterface.h"
+#include "../remote-software/sources/entities/entityinterface.h"
+#include "../remote-software/sources/notificationsinterface.h"
+#include "../remote-software/sources/yioapiinterface.h"
+#include "../remote-software/sources/configinterface.h"
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //// DOCK FACTORY
@@ -25,9 +30,6 @@ public:
     explicit Dock() {}
 
     void create                     (const QVariantMap& config, QObject *entities, QObject *notifications, QObject* api, QObject *configObj) override;
-
-public slots:
-    void test() { qDebug() << "HELLLO"; }
 };
 
 
