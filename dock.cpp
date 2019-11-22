@@ -44,6 +44,13 @@ DockBase::DockBase(QObject* parent)
     this->setParent(parent);
 }
 
+DockBase::~DockBase() {
+    if (m_thread.isRunning()) {
+        m_thread.exit();
+        m_thread.wait();
+    }
+}
+
 void DockBase::setup(const QVariantMap& config, QObject* entities, QObject* notifications, QObject* api, QObject* configObj)
 {
     setFriendlyName(config.value("txt").toMap().value("friendly_name").toString());

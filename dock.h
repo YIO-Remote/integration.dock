@@ -43,6 +43,7 @@ class DockBase : public Integration
 
 public:
     explicit DockBase(QObject *parent);
+    virtual ~DockBase();
 
     Q_INVOKABLE void setup  	    (const QVariantMap& config, QObject *entities, QObject *notifications, QObject* api, QObject *configObj);
     Q_INVOKABLE void connect	    ();
