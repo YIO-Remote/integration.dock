@@ -37,6 +37,15 @@ void Dock::create(const QVariantMap &config, QObject *entities, QObject *notific
 
     // start the MDNS discovery
     m_api->discoverNetworkServices(mdns);
+
+    // start a timeout timer if no docks are discovered
+    QTimer* timeOutTimer = new QTimer();
+    timeOutTimer->setSingleShot(true);
+    connect(timeOutTimer, &QTimer::timeout, this, [=](){
+        QMap<QObject *, QVariant> returnData;
+        emit createDone(returnData);
+    });
+    timeOutTimer->start(5000);
 }
 
 DockBase::DockBase(QObject* parent)
@@ -202,25 +211,25 @@ void DockThread::onTimeout()
 
 void DockThread::webSocketSendCommand(const QString& domain, const QString& service, const QString& entity_id, QVariantMap *data)
 {
-//    // sends a command to the YIO dock
+    //    // sends a command to the YIO dock
 
-//    QVariantMap map;
-//    map.insert("type", QVariant("call_service"));
-//    map.insert("domain", QVariant(domain));
-//    map.insert("service", QVariant(service));
+    //    QVariantMap map;
+    //    map.insert("type", QVariant("call_service"));
+    //    map.insert("domain", QVariant(domain));
+    //    map.insert("service", QVariant(service));
 
-//    if (data == NULL) {
-//        QVariantMap d;
-//        d.insert("entity_id", QVariant(entity_id));
-//        map.insert("service_data", d);
-//    }
-//    else {
-//        data->insert("entity_id", QVariant(entity_id));
-//        map.insert("service_data", *data);
-//    }
-//    QJsonDocument doc = QJsonDocument::fromVariant(map);
-//    QString message = doc.toJson(QJsonDocument::JsonFormat::Compact);
-//    m_socket->sendTextMessage(message);
+    //    if (data == NULL) {
+    //        QVariantMap d;
+    //        d.insert("entity_id", QVariant(entity_id));
+    //        map.insert("service_data", d);
+    //    }
+    //    else {
+    //        data->insert("entity_id", QVariant(entity_id));
+    //        map.insert("service_data", *data);
+    //    }
+    //    QJsonDocument doc = QJsonDocument::fromVariant(map);
+    //    QString message = doc.toJson(QJsonDocument::JsonFormat::Compact);
+    //    m_socket->sendTextMessage(message);
 
 }
 
