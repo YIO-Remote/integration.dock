@@ -1,6 +1,6 @@
 /******************************************************************************
  *
- * Copyright (C) <2019> <Marton Borzak> <hello@martonborzak.com>
+ * Copyright (C) 2019 Marton Borzak <hello@martonborzak.com>
  *
  * This file is part of the YIO-Remote software project.
  *
