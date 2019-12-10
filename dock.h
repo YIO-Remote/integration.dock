@@ -1,23 +1,24 @@
 /******************************************************************************
- *
- * Copyright (C) 2019 Marton Borzak <hello@martonborzak.com>
- *
- * This file is part of the YIO-Remote software project.
- *
- * YIO-Remote software is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * YIO-Remote software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with YIO-Remote software. If not, see <https://www.gnu.org/licenses/>.
- *
- * SPDX-License-Identifier: GPL-3.0-or-later
+  *
+  * Copyright (C) 2019 Marton Borzak <hello@martonborzak.com>
+  * Copyright (C) 2019 Christian Riedl <ric@rts.co.at>
+  *
+  * This file is part of the YIO-Remote software project.
+  *
+  * YIO-Remote software is free software: you can redistribute it and/or modify
+  * it under the terms of the GNU General Public License as published by
+  * the Free Software Foundation, either version 3 of the License, or
+  * (at your option) any later version.
+  *
+  * YIO-Remote software is distributed in the hope that it will be useful,
+  * but WITHOUT ANY WARRANTY; without even the implied warranty of
+  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  * GNU General Public License for more details.
+  *
+  * You should have received a copy of the GNU General Public License
+  * along with YIO-Remote software. If not, see <https://www.gnu.org/licenses/>.
+  *
+  * SPDX-License-Identifier: GPL-3.0-or-later
  *****************************************************************************/
 
 #ifndef DOCK_H
@@ -30,11 +31,13 @@
 #include <QtWebSockets/QWebSocket>
 #include <QTimer>
 #include <QThread>
+#include <QLoggingCategory>
 
 #include "../remote-software/sources/integrations/integration.h"
-#include "../remote-software/sources/integrations/integrationinterface.h"
+#include "../remote-software/sources/integrations/plugininterface.h"
 #include "../remote-software/sources/entities/entitiesinterface.h"
 #include "../remote-software/sources/entities/entityinterface.h"
+#include "../remote-software/sources/entities/remoteinterface.h"
 #include "../remote-software/sources/notificationsinterface.h"
 #include "../remote-software/sources/yioapiinterface.h"
 #include "../remote-software/sources/configinterface.h"
@@ -42,16 +45,24 @@
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //// DOCK FACTORY
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-class Dock : public IntegrationInterface
+class DockPlugin : public PluginInterface
 {
     Q_OBJECT
-    Q_PLUGIN_METADATA(IID "YIO.IntegrationInterface" FILE "dock.json")
-    Q_INTERFACES(IntegrationInterface)
+    Q_PLUGIN_METADATA(IID "YIO.PluginInterface" FILE "dock.json")
+    Q_INTERFACES(PluginInterface)
 
 public:
-    explicit Dock() {}
+    explicit DockPlugin() :
+        m_log("dock")
+    {}
 
     void create                     (const QVariantMap& config, QObject *entities, QObject *notifications, QObject* api, QObject *configObj) override;
+    void setLogEnabled              (QtMsgType msgType, bool enable) override
+    {
+        m_log.setEnabled(msgType, enable);
+    }
+private:
+    QLoggingCategory    m_log;
 };
 
 
@@ -64,27 +75,27 @@ class DockBase : public Integration
     Q_OBJECT
 
 public:
-    explicit DockBase(QObject *parent);
+    explicit DockBase(QLoggingCategory& log, QObject *parent);
     virtual ~DockBase();
 
     Q_INVOKABLE void setup  	    (const QVariantMap& config, QObject *entities, QObject *notifications, QObject* api, QObject *configObj);
     Q_INVOKABLE void connect	    ();
     Q_INVOKABLE void disconnect	    ();
+    Q_INVOKABLE void sendCommand    (const QString& type, const QString& entity_id, int command, const QVariant& param);
 
 signals:
     void connectSignal              ();
     void disconnectSignal           ();
-    void sendCommandSignal          (const QString& type, const QString& entity_id, const QString& command, const QVariant& param);
+    void sendCommandSignal          (const QString& type, const QString& entity_id, int command, const QVariant& param);
 
 
 public slots:
-    void sendCommand                (const QString& type, const QString& entity_id, const QString& command, const QVariant& param);
     void stateHandler               (int state);
 
 private:
-    void updateEntity               (const QString& entity_id, const QVariantMap& attr) {}
 
     QThread                         m_thread;
+    QLoggingCategory&               m_log;
 };
 
 
@@ -97,7 +108,8 @@ class DockThread : public QObject
     Q_OBJECT
 
 public:
-    DockThread                      (const QVariantMap &config, QObject *entities, QObject *notifications, QObject *api, QObject *configObj);
+    DockThread                      (const QVariantMap &config, QObject *entities, QObject *notifications, QObject *api, QObject *configObj,
+                                     QLoggingCategory& log);
 
     QString                         m_friendly_name;
 
@@ -108,7 +120,7 @@ public slots:
     void connect                    ();
     void disconnect                 ();
 
-    void sendCommand                (const QString& type, const QString& entity_id, const QString& command, const QVariant& param);
+    void sendCommand                (const QString& type, const QString& entity_id, int command, const QVariant& param);
 
     void onTextMessageReceived	    (const QString &message);
     void onStateChanged             (QAbstractSocket::SocketState state);
@@ -138,7 +150,7 @@ private:
     bool                            m_userDisconnect = false;
 
     int                             m_state = 0;
-
+    QLoggingCategory&               m_log;
 };
 
 
