@@ -8,11 +8,13 @@
 #include <QtWebSockets/QWebSocket>
 #include <QTimer>
 #include <QThread>
+#include <QLoggingCategory>
 
 #include "../remote-software/sources/integrations/integration.h"
-#include "../remote-software/sources/integrations/integrationinterface.h"
+#include "../remote-software/sources/integrations/plugininterface.h"
 #include "../remote-software/sources/entities/entitiesinterface.h"
 #include "../remote-software/sources/entities/entityinterface.h"
+#include "../remote-software/sources/entities/remoteinterface.h"
 #include "../remote-software/sources/notificationsinterface.h"
 #include "../remote-software/sources/yioapiinterface.h"
 #include "../remote-software/sources/configinterface.h"
@@ -20,16 +22,24 @@
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //// DOCK FACTORY
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-class Dock : public IntegrationInterface
+class DockPlugin : public PluginInterface
 {
     Q_OBJECT
-    Q_PLUGIN_METADATA(IID "YIO.IntegrationInterface" FILE "dock.json")
-    Q_INTERFACES(IntegrationInterface)
+    Q_PLUGIN_METADATA(IID "YIO.PluginInterface" FILE "dock.json")
+    Q_INTERFACES(PluginInterface)
 
 public:
-    explicit Dock() {}
+    explicit DockPlugin() :
+        m_log("dock")
+    {}
 
     void create                     (const QVariantMap& config, QObject *entities, QObject *notifications, QObject* api, QObject *configObj) override;
+    void setLogEnabled              (QtMsgType msgType, bool enable) override
+    {
+        m_log.setEnabled(msgType, enable);
+    }
+private:
+    QLoggingCategory    m_log;
 };
 
 
@@ -42,27 +52,27 @@ class DockBase : public Integration
     Q_OBJECT
 
 public:
-    explicit DockBase(QObject *parent);
+    explicit DockBase(QLoggingCategory& log, QObject *parent);
     virtual ~DockBase();
 
     Q_INVOKABLE void setup  	    (const QVariantMap& config, QObject *entities, QObject *notifications, QObject* api, QObject *configObj);
     Q_INVOKABLE void connect	    ();
     Q_INVOKABLE void disconnect	    ();
+    Q_INVOKABLE void sendCommand    (const QString& type, const QString& entity_id, int command, const QVariant& param);
 
 signals:
     void connectSignal              ();
     void disconnectSignal           ();
-    void sendCommandSignal          (const QString& type, const QString& entity_id, const QString& command, const QVariant& param);
+    void sendCommandSignal          (const QString& type, const QString& entity_id, int command, const QVariant& param);
 
 
 public slots:
-    void sendCommand                (const QString& type, const QString& entity_id, const QString& command, const QVariant& param);
     void stateHandler               (int state);
 
 private:
-    void updateEntity               (const QString& entity_id, const QVariantMap& attr) {}
 
     QThread                         m_thread;
+    QLoggingCategory&               m_log;
 };
 
 
@@ -75,7 +85,8 @@ class DockThread : public QObject
     Q_OBJECT
 
 public:
-    DockThread                      (const QVariantMap &config, QObject *entities, QObject *notifications, QObject *api, QObject *configObj);
+    DockThread                      (const QVariantMap &config, QObject *entities, QObject *notifications, QObject *api, QObject *configObj,
+                                     QLoggingCategory& log);
 
     QString                         m_friendly_name;
 
@@ -86,7 +97,7 @@ public slots:
     void connect                    ();
     void disconnect                 ();
 
-    void sendCommand                (const QString& type, const QString& entity_id, const QString& command, const QVariant& param);
+    void sendCommand                (const QString& type, const QString& entity_id, int command, const QVariant& param);
 
     void onTextMessageReceived	    (const QString &message);
     void onStateChanged             (QAbstractSocket::SocketState state);
@@ -116,7 +127,7 @@ private:
     bool                            m_userDisconnect = false;
 
     int                             m_state = 0;
-
+    QLoggingCategory&               m_log;
 };
 
 

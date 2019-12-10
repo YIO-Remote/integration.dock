@@ -5,13 +5,15 @@
 #include "dock.h"
 #include "math.h"
 #include "../remote-software/sources/entities/entity.h"
-#include "../remote-software/sources/entities/remote.h"
+#include "../remote-software/sources/entities/remoteinterface.h"
 
-void Dock::create(const QVariantMap &config, QObject *entities, QObject *notifications, QObject *api, QObject *configObj)
+IntegrationInterface::~IntegrationInterface()
+{}
+
+void DockPlugin::create(const QVariantMap &config, QObject *entities, QObject *notifications, QObject *api, QObject *configObj)
 {
     YioAPIInterface* m_api = qobject_cast<YioAPIInterface *>(api);
     QString mdns = "_yio-dock-api._tcp";
-
 
     connect(m_api, &YioAPIInterface::serviceDiscovered, this, [=](QMap<QString, QVariantMap> services){
         QMap<QObject *, QVariant> returnData;
@@ -21,7 +23,7 @@ void Dock::create(const QVariantMap &config, QObject *entities, QObject *notific
         QMap<QString, QVariantMap>::iterator i;
         for (i = services.begin(); i != services.end(); i++)
         {
-            DockBase* db = new DockBase(this);
+            DockBase* db = new DockBase(m_log, this);
             db->setup(i.value(), entities, notifications, api, configObj);
 
             QVariantMap d;
@@ -48,7 +50,8 @@ void Dock::create(const QVariantMap &config, QObject *entities, QObject *notific
     timeOutTimer->start(5000);
 }
 
-DockBase::DockBase(QObject* parent)
+DockBase::DockBase(QLoggingCategory& log, QObject* parent) :
+    m_log(log)
 {
     this->setParent(parent);
 }
@@ -62,11 +65,10 @@ DockBase::~DockBase() {
 
 void DockBase::setup(const QVariantMap& config, QObject* entities, QObject* notifications, QObject* api, QObject* configObj)
 {
-    setFriendlyName(config.value("txt").toMap().value("friendly_name").toString());
-    setIntegrationId(config.value("name").toString());
+    Integration::setup(config, entities);
 
     // crate a new instance and pass on variables
-    DockThread *DThread = new DockThread(config, entities, notifications, api, configObj);
+    DockThread *DThread = new DockThread(config, entities, notifications, api, configObj, m_log);
     DThread->m_friendly_name = config.value("txt").toMap().value("friendly_name").toString();
 
     // move to thread
@@ -94,7 +96,7 @@ void DockBase::disconnect()
     emit disconnectSignal();
 }
 
-void DockBase::sendCommand(const QString& type, const QString& entity_id, const QString& command, const QVariant& param)
+void DockBase::sendCommand(const QString& type, const QString& entity_id, int command, const QVariant& param)
 {
     emit sendCommandSignal(type, entity_id, command, param);
 }
@@ -114,7 +116,9 @@ void DockBase::stateHandler(int state)
 //// HOME ASSISTANT THREAD CLASS
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-DockThread::DockThread(const QVariantMap &config, QObject *entities, QObject *notifications, QObject *api, QObject *configObj)
+DockThread::DockThread(const QVariantMap &config, QObject *entities, QObject *notifications, QObject *api, QObject *configObj,
+                       QLoggingCategory& log) :
+    m_log(log)
 {
     m_ip = config.value("ip").toString();
     m_token = "0";
@@ -148,18 +152,18 @@ void DockThread::onTextMessageReceived(const QString &message)
     QJsonParseError parseerror;
     QJsonDocument doc = QJsonDocument::fromJson(message.toUtf8(), &parseerror);
     if (parseerror.error != QJsonParseError::NoError) {
-        qDebug() << "JSON error : " << parseerror.errorString();
+        qCDebug(m_log) << "JSON error : " << parseerror.errorString();
         return;
     }
     QVariantMap map = doc.toVariant().toMap();
 
     QString m = map.value("error").toString();
     if (m.length() > 0) {
-        qDebug() << "error : " << m;
+        qCDebug(m_log) << "error : " << m;
     }
 
     QString type = map.value("type").toString();
-    int id = map.value("id").toInt();
+    //int id = map.value("id").toInt();
 
     if (type == "auth_required") {
         QString auth = QString("{ \"type\": \"auth\", \"token\": \"%1\" }\n").arg(m_token);
@@ -182,7 +186,7 @@ void DockThread::onStateChanged(QAbstractSocket::SocketState state)
 
 void DockThread::onError(QAbstractSocket::SocketError error)
 {
-    qDebug() << error;
+    qCDebug(m_log) << error;
     m_socket->close();
     setState(2);
     m_websocketReconnect->start();
@@ -233,13 +237,6 @@ void DockThread::webSocketSendCommand(const QString& domain, const QString& serv
 
 }
 
-void DockThread::updateEntity(const QString& entity_id, const QVariantMap& attr)
-{
-    Entity* entity = (Entity*)m_entities->get(entity_id);
-    if (entity) {
-    }
-}
-
 void DockThread::setState(int state)
 {
     m_state = state;
@@ -273,43 +270,45 @@ void DockThread::disconnect()
     setState(2);
 }
 
-void DockThread::sendCommand(const QString &type, const QString &entity_id, const QString &command, const QVariant &param)
+void DockThread::sendCommand(const QString &type, const QString &entity_id, int command, const QVariant &param)
 {
+    Q_UNUSED(param)
     if (type == "remote") {
 
         // get the remote enityt from the entity database
-        Remote* entity = (Remote*)m_entities->get(entity_id);
+        EntityInterface* entity = m_entities->getEntityInterface(entity_id);
+        RemoteInterface* remoteInterface = static_cast<RemoteInterface*>(entity->getSpecificInterface());
 
         // get all the commands the entity can do (IR codes)
-        QVariantList commands = entity->commands();
+        QVariantList commands = remoteInterface->commands();
 
         // find the IR code that matches the command we got from the UI
-        QString IRcommand = findIRCode(command, commands);
+        QString commandText = entity->getCommandName(command);
+        QString IRcommand = findIRCode(commandText, commands);
 
-        // send the request to the dock
-        QVariantMap msg;
-        msg.insert("type", QVariant("dock"));
-        msg.insert("command", QVariant("ir_send"));
-        msg.insert("code", IRcommand);
-        QJsonDocument doc = QJsonDocument::fromVariant(msg);
-        QString message = doc.toJson(QJsonDocument::JsonFormat::Compact);
+        if (IRcommand != "") {
+            // send the request to the dock
+            QVariantMap msg;
+            msg.insert("type", QVariant("dock"));
+            msg.insert("command", QVariant("ir_send"));
+            msg.insert("code", IRcommand);
+            QJsonDocument doc = QJsonDocument::fromVariant(msg);
+            QString message = doc.toJson(QJsonDocument::JsonFormat::Compact);
 
-        if (command != "") {
             // send the message through the websocket api
             m_socket->sendTextMessage(message);
         }
-
     }
     // commands that does not have entity
     if (type == "dock") {
-        if (command == "REMOTE_CHARGED") {
+        if (command == RemoteDef::C_REMOTE_CHARGED) {
             QVariantMap msg;
             msg.insert("type", QVariant("dock"));
             msg.insert("command", QVariant("remote_charged"));
             QJsonDocument doc = QJsonDocument::fromVariant(msg);
             QString message = doc.toJson(QJsonDocument::JsonFormat::Compact);
             m_socket->sendTextMessage(message);
-        } else if (command == "REMOTE_LOWBATTERY") {
+        } else if (command == RemoteDef::C_REMOTE_LOWBATTERY) {
             QVariantMap msg;
             msg.insert("type", QVariant("dock"));
             msg.insert("command", QVariant("remote_lowbattery"));
