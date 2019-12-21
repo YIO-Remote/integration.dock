@@ -46,8 +46,7 @@ void DockPlugin::create(const QVariantMap &config, QObject *entities, QObject *n
         QMap<QString, QVariantMap>::iterator i;
         for (i = services.begin(); i != services.end(); i++)
         {
-            DockBase* db = new DockBase(m_log, this);
-            db->setup(i.value(), entities, notifications, api, configObj);
+            Dock* db = new Dock(config, entities, notifications, api, configObj, m_log);
 
             QVariantMap d;
             d.insert("id", i.value().value("name").toString());
@@ -73,93 +72,34 @@ void DockPlugin::create(const QVariantMap &config, QObject *entities, QObject *n
     timeOutTimer->start(5000);
 }
 
-DockBase::DockBase(QLoggingCategory& log, QObject* parent) :
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//// DOCK CLASS
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+Dock::Dock(const QVariantMap &config, QObject *entities, QObject *notifications, QObject *api, QObject *configObj, QLoggingCategory& log) :
     m_log(log)
-{
-    this->setParent(parent);
-}
-
-DockBase::~DockBase() {
-    if (m_thread.isRunning()) {
-        m_thread.exit();
-        m_thread.wait(5000);
-    }
-}
-
-void DockBase::setup(const QVariantMap& config, QObject* entities, QObject* notifications, QObject* api, QObject* configObj)
 {
     Integration::setup(config, entities);
 
-    // crate a new instance and pass on variables
-    DockThread *DThread = new DockThread(config, entities, notifications, api, configObj, m_log);
-    DThread->m_friendly_name = config.value("txt").toMap().value("friendly_name").toString();
-
-    // move to thread
-    DThread->moveToThread(&m_thread);
-
-    // connect signals and slots
-    QObject::connect(&m_thread, &QThread::finished, DThread, &QObject::deleteLater);
-
-    QObject::connect(this, &DockBase::connectSignal, DThread, &DockThread::connect);
-    QObject::connect(this, &DockBase::disconnectSignal, DThread, &DockThread::disconnect);
-    QObject::connect(this, &DockBase::sendCommandSignal, DThread, &DockThread::sendCommand);
-
-    QObject::connect(DThread, &DockThread::stateChanged, this, &DockBase::stateHandler);
-
-    m_thread.start();
-}
-
-void DockBase::connect()
-{
-    emit connectSignal();
-}
-
-void DockBase::disconnect()
-{
-    emit disconnectSignal();
-}
-
-void DockBase::sendCommand(const QString& type, const QString& entity_id, int command, const QVariant& param)
-{
-    emit sendCommandSignal(type, entity_id, command, param);
-}
-
-void DockBase::stateHandler(int state)
-{
-    if (state == 0) {
-        setState(CONNECTED);
-    } else if (state == 1) {
-        setState(CONNECTING);
-    } else if (state == 2) {
-        setState(DISCONNECTED);
-    }
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//// HOME ASSISTANT THREAD CLASS
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-DockThread::DockThread(const QVariantMap &config, QObject *entities, QObject *notifications, QObject *api, QObject *configObj,
-                       QLoggingCategory& log) :
-    m_log(log)
-{
     m_ip = config.value("ip").toString();
     m_token = "0";
     m_id = config.value("name").toString();
+    m_friendly_name = config.value("txt").toMap().value("friendly_name").toString();
 
     m_entities = qobject_cast<EntitiesInterface *>(entities);
     m_notifications = qobject_cast<NotificationsInterface *>(notifications);
     m_api = qobject_cast<YioAPIInterface *>(api);
     m_config = qobject_cast<ConfigInterface *>(configObj);
 
-    m_websocketReconnect = new QTimer(this);
+    m_websocketReconnect = new QTimer();
 
     m_websocketReconnect->setSingleShot(true);
     m_websocketReconnect->setInterval(2000);
     m_websocketReconnect->stop();
 
     m_socket = new QWebSocket;
-    m_socket->setParent(this);
+//    m_socket->setParent(this);
 
     QObject::connect(m_socket, SIGNAL(textMessageReceived(const QString &)), this, SLOT(onTextMessageReceived(const QString &)));
     QObject::connect(m_socket, SIGNAL(error(QAbstractSocket::SocketError)), this, SLOT(onError(QAbstractSocket::SocketError)));
@@ -170,7 +110,7 @@ DockThread::DockThread(const QVariantMap &config, QObject *entities, QObject *no
 
 
 
-void DockThread::onTextMessageReceived(const QString &message)
+void Dock::onTextMessageReceived(const QString &message)
 {
     QJsonParseError parseerror;
     QJsonDocument doc = QJsonDocument::fromJson(message.toUtf8(), &parseerror);
@@ -195,27 +135,27 @@ void DockThread::onTextMessageReceived(const QString &message)
 
     if (type == "auth_ok") {
         qDebug() << "Connection successful:" << m_friendly_name;
-        setState(0);
+        setState(CONNECTED);
     }
 }
 
-void DockThread::onStateChanged(QAbstractSocket::SocketState state)
+void Dock::onStateChanged(QAbstractSocket::SocketState state)
 {
     if (state == QAbstractSocket::UnconnectedState && !m_userDisconnect) {
-        setState(2);
+        setState(DISCONNECTED);
         m_websocketReconnect->start();
     }
 }
 
-void DockThread::onError(QAbstractSocket::SocketError error)
+void Dock::onError(QAbstractSocket::SocketError error)
 {
     qCDebug(m_log) << error;
     m_socket->close();
-    setState(2);
+    setState(DISCONNECTED);
     m_websocketReconnect->start();
 }
 
-void DockThread::onTimeout()
+void Dock::onTimeout()
 {
     if (m_tries == 3) {
         m_websocketReconnect->stop();
@@ -225,9 +165,9 @@ void DockThread::onTimeout()
         m_tries = 0;
     }
     else {
-        if (m_state != 1)
+        if (m_state != CONNECTING)
         {
-            setState(1);
+            setState(CONNECTING);
         }
         QString url = QString("ws://").append(m_ip).append(":946");
         m_socket->open(QUrl(url));
@@ -236,7 +176,7 @@ void DockThread::onTimeout()
     }
 }
 
-void DockThread::webSocketSendCommand(const QString& domain, const QString& service, const QString& entity_id, QVariantMap *data)
+void Dock::webSocketSendCommand(const QString& domain, const QString& service, const QString& entity_id, QVariantMap *data)
 {
     //    // sends a command to the YIO dock
 
@@ -260,17 +200,11 @@ void DockThread::webSocketSendCommand(const QString& domain, const QString& serv
 
 }
 
-void DockThread::setState(int state)
-{
-    m_state = state;
-    emit stateChanged(state);
-}
-
-void DockThread::connect()
+void Dock::connect()
 {
     m_userDisconnect = false;
 
-    setState(1);
+    setState(CONNECTING);
 
     // reset the reconnnect trial variable
     m_tries = 0;
@@ -280,7 +214,7 @@ void DockThread::connect()
     m_socket->open(QUrl(url));
 }
 
-void DockThread::disconnect()
+void Dock::disconnect()
 {
     m_userDisconnect = true;
 
@@ -290,10 +224,10 @@ void DockThread::disconnect()
     // turn off the socket
     m_socket->close();
 
-    setState(2);
+    setState(DISCONNECTED);
 }
 
-void DockThread::sendCommand(const QString &type, const QString &entity_id, int command, const QVariant &param)
+void Dock::sendCommand(const QString &type, const QString &entity_id, int command, const QVariant &param)
 {
     Q_UNUSED(param)
     if (type == "remote") {
@@ -342,7 +276,7 @@ void DockThread::sendCommand(const QString &type, const QString &entity_id, int 
     }
 }
 
-QString DockThread::findIRCode(const QString &feature, QVariantList& list)
+QString Dock::findIRCode(const QString &feature, QVariantList& list)
 {
     QString r = "";
 

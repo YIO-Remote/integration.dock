@@ -70,58 +70,21 @@ private:
 //// DOCK CLASS
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-class DockBase : public Integration
+class Dock : public Integration
 {
     Q_OBJECT
 
 public:
-    explicit DockBase(QLoggingCategory& log, QObject *parent);
-    virtual ~DockBase();
+    explicit Dock             (const QVariantMap &config, QObject *entities, QObject *notifications, QObject *api, QObject *configObj, QLoggingCategory& log);
+    virtual ~Dock() {}
 
-    Q_INVOKABLE void setup  	    (const QVariantMap& config, QObject *entities, QObject *notifications, QObject* api, QObject *configObj);
     Q_INVOKABLE void connect	    ();
     Q_INVOKABLE void disconnect	    ();
     Q_INVOKABLE void sendCommand    (const QString& type, const QString& entity_id, int command, const QVariant& param);
 
-signals:
-    void connectSignal              ();
-    void disconnectSignal           ();
-    void sendCommandSignal          (const QString& type, const QString& entity_id, int command, const QVariant& param);
-
-
-public slots:
-    void stateHandler               (int state);
-
-private:
-
-    QThread                         m_thread;
-    QLoggingCategory&               m_log;
-};
-
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//// DOCK THREAD CLASS
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-class DockThread : public QObject
-{
-    Q_OBJECT
-
-public:
-    DockThread                      (const QVariantMap &config, QObject *entities, QObject *notifications, QObject *api, QObject *configObj,
-                                     QLoggingCategory& log);
-
     QString                         m_friendly_name;
 
-signals:
-    void stateChanged               (int state);
-
 public slots:
-    void connect                    ();
-    void disconnect                 ();
-
-    void sendCommand                (const QString& type, const QString& entity_id, int command, const QVariant& param);
-
     void onTextMessageReceived	    (const QString &message);
     void onStateChanged             (QAbstractSocket::SocketState state);
     void onError                    (QAbstractSocket::SocketError error);
@@ -132,10 +95,8 @@ public slots:
 private:
     void webSocketSendCommand	    (const QString& domain, const QString& service, const QString& entity_id, QVariantMap *data);
     void updateEntity               (const QString& entity_id, const QVariantMap& attr);
-    void setState                   (int state);
     QString findIRCode              (const QString& feature, QVariantList& list);
 
-    EntitiesInterface*              m_entities;
     NotificationsInterface*         m_notifications;
     YioAPIInterface*                m_api;
     ConfigInterface*                m_config;
@@ -149,7 +110,6 @@ private:
     int                             m_tries;
     bool                            m_userDisconnect = false;
 
-    int                             m_state = 0;
     QLoggingCategory&               m_log;
 };
 
