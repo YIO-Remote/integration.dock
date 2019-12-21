@@ -75,7 +75,7 @@ class Dock : public Integration
     Q_OBJECT
 
 public:
-    explicit Dock             (const QVariantMap &config, QObject *entities, QObject *notifications, QObject *api, QObject *configObj, QLoggingCategory& log);
+    explicit Dock             (const QVariantMap &config, const QVariantMap &mdns, QObject *entities, QObject *notifications, QObject *api, QObject *configObj, QLoggingCategory& log);
     virtual ~Dock() {}
 
     Q_INVOKABLE void connect	    ();

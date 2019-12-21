@@ -45,8 +45,8 @@ void DockPlugin::create(const QVariantMap &config, QObject *entities, QObject *n
         // let's go through the returned list of discovered docks
         QMap<QString, QVariantMap>::iterator i;
         for (i = services.begin(); i != services.end(); i++)
-        {
-            Dock* db = new Dock(config, entities, notifications, api, configObj, m_log);
+        {   
+            Dock* db = new Dock(config, i.value(), entities, notifications, api, configObj, m_log);
 
             QVariantMap d;
             d.insert("id", i.value().value("name").toString());
@@ -77,15 +77,15 @@ void DockPlugin::create(const QVariantMap &config, QObject *entities, QObject *n
 //// DOCK CLASS
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-Dock::Dock(const QVariantMap &config, QObject *entities, QObject *notifications, QObject *api, QObject *configObj, QLoggingCategory& log) :
+Dock::Dock(const QVariantMap &config, const QVariantMap &mdns, QObject *entities, QObject *notifications, QObject *api, QObject *configObj, QLoggingCategory& log) :
     m_log(log)
 {
     Integration::setup(config, entities);
 
-    m_ip = config.value("ip").toString();
+    m_ip = mdns.value("ip").toString();
     m_token = "0";
-    m_id = config.value("name").toString();
-    m_friendly_name = config.value("txt").toMap().value("friendly_name").toString();
+    m_id = mdns.value("name").toString();
+    m_friendly_name = mdns.value("txt").toMap().value("friendly_name").toString();
 
     m_entities = qobject_cast<EntitiesInterface *>(entities);
     m_notifications = qobject_cast<NotificationsInterface *>(notifications);
@@ -99,7 +99,7 @@ Dock::Dock(const QVariantMap &config, QObject *entities, QObject *notifications,
     m_websocketReconnect->stop();
 
     m_socket = new QWebSocket;
-//    m_socket->setParent(this);
+    m_socket->setParent(this);
 
     QObject::connect(m_socket, SIGNAL(textMessageReceived(const QString &)), this, SLOT(onTextMessageReceived(const QString &)));
     QObject::connect(m_socket, SIGNAL(error(QAbstractSocket::SocketError)), this, SLOT(onError(QAbstractSocket::SocketError)));
