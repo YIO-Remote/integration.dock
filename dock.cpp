@@ -50,7 +50,7 @@ void DockPlugin::create(const QVariantMap &config, QObject *entities, QObject *n
 
             QVariantMap d;
             d.insert("id", i.value().value("name").toString());
-            d.insert("friendly_name", i.value().value("txt").toMap().value("friendly_name").toString());
+            d.insert("friendly_name", i.value().value("txt").toMap().value("FriendlyName").toString());
             d.insert("mdns", mdns);
             d.insert("type", config.value("type").toString());
             returnData.insert(db, d);
