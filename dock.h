@@ -76,7 +76,6 @@ class Dock : public Integration
 
 public:
     explicit Dock             (const QVariantMap &config, const QVariantMap &mdns, QObject *entities, QObject *notifications, QObject *api, QObject *configObj, QLoggingCategory& log);
-    virtual ~Dock() {}
 
     Q_INVOKABLE void connect	    ();
     Q_INVOKABLE void disconnect	    ();
@@ -95,7 +94,7 @@ public slots:
 private:
     void webSocketSendCommand	    (const QString& domain, const QString& service, const QString& entity_id, QVariantMap *data);
     void updateEntity               (const QString& entity_id, const QVariantMap& attr);
-    QString findIRCode              (const QString& feature, QVariantList& list);
+    QStringList findIRCode          (const QString& feature, QVariantList& list);
 
     NotificationsInterface*         m_notifications;
     YioAPIInterface*                m_api;

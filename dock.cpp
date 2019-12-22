@@ -45,7 +45,7 @@ void DockPlugin::create(const QVariantMap &config, QObject *entities, QObject *n
         // let's go through the returned list of discovered docks
         QMap<QString, QVariantMap>::iterator i;
         for (i = services.begin(); i != services.end(); i++)
-        {   
+        {
             Dock* db = new Dock(config, i.value(), entities, notifications, api, configObj, m_log);
 
             QVariantMap d;
@@ -134,7 +134,7 @@ void Dock::onTextMessageReceived(const QString &message)
     }
 
     if (type == "auth_ok") {
-        qDebug() << "Connection successful:" << m_friendly_name;
+        qCDebug(m_log) << "Connection successful:" << m_friendly_name;
         setState(CONNECTED);
     }
 }
@@ -178,26 +178,10 @@ void Dock::onTimeout()
 
 void Dock::webSocketSendCommand(const QString& domain, const QString& service, const QString& entity_id, QVariantMap *data)
 {
-    //    // sends a command to the YIO dock
-
-    //    QVariantMap map;
-    //    map.insert("type", QVariant("call_service"));
-    //    map.insert("domain", QVariant(domain));
-    //    map.insert("service", QVariant(service));
-
-    //    if (data == NULL) {
-    //        QVariantMap d;
-    //        d.insert("entity_id", QVariant(entity_id));
-    //        map.insert("service_data", d);
-    //    }
-    //    else {
-    //        data->insert("entity_id", QVariant(entity_id));
-    //        map.insert("service_data", *data);
-    //    }
-    //    QJsonDocument doc = QJsonDocument::fromVariant(map);
-    //    QString message = doc.toJson(QJsonDocument::JsonFormat::Compact);
-    //    m_socket->sendTextMessage(message);
-
+    Q_UNUSED(domain)
+    Q_UNUSED(service)
+    Q_UNUSED(entity_id)
+    Q_UNUSED(data)
 }
 
 void Dock::connect()
@@ -241,14 +225,15 @@ void Dock::sendCommand(const QString &type, const QString &entity_id, int comman
 
         // find the IR code that matches the command we got from the UI
         QString commandText = entity->getCommandName(command);
-        QString IRcommand = findIRCode(commandText, commands);
+        QStringList IRcommand = findIRCode(commandText, commands);
 
-        if (IRcommand != "") {
+        if (IRcommand[0] != "") {
             // send the request to the dock
             QVariantMap msg;
             msg.insert("type", QVariant("dock"));
             msg.insert("command", QVariant("ir_send"));
-            msg.insert("code", IRcommand);
+            msg.insert("code", IRcommand[0]);
+            msg.insert("format", IRcommand[1]);
             QJsonDocument doc = QJsonDocument::fromVariant(msg);
             QString message = doc.toJson(QJsonDocument::JsonFormat::Compact);
 
@@ -256,7 +241,8 @@ void Dock::sendCommand(const QString &type, const QString &entity_id, int comman
             m_socket->sendTextMessage(message);
         }
     }
-    // commands that does not have entity
+
+    //commands that does not have entity
     if (type == "dock") {
         if (command == RemoteDef::C_REMOTE_CHARGED) {
             QVariantMap msg;
@@ -276,17 +262,20 @@ void Dock::sendCommand(const QString &type, const QString &entity_id, int comman
     }
 }
 
-QString Dock::findIRCode(const QString &feature, QVariantList& list)
+QStringList Dock::findIRCode(const QString &feature, QVariantList& list)
 {
-    QString r = "";
+    QStringList r;
 
     for (int i = 0; i < list.length(); i++) {
         QVariantMap map =  list[i].toMap();
-
         if (map.value("button_map").toString() == feature) {
-            r = map.value("code").toString();
+            r.append(map.value("code").toString());
+            r.append(map.value("format").toString());
         }
     }
+
+    if (r.length() == 0)
+        r.append("");
 
     return r;
 }
