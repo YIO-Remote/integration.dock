@@ -235,6 +235,17 @@ void Dock::disconnect()
     setState(DISCONNECTED);
 }
 
+void Dock::enterStandby()
+{
+    m_heartbeatTimer->stop();
+    m_heartbeatTimeoutTimer->stop();
+}
+
+void Dock::leaveStandby()
+{
+    m_heartbeatTimer->start();
+}
+
 void Dock::sendCommand(const QString &type, const QString &entity_id, int command, const QVariant &param)
 {
     Q_UNUSED(param)

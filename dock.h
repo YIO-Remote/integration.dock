@@ -77,9 +77,11 @@ class Dock : public Integration
 public:
     explicit Dock             (const QVariantMap &config, const QVariantMap &mdns, QObject *entities, QObject *notifications, QObject *api, QObject *configObj, QLoggingCategory& log);
 
-    Q_INVOKABLE void connect	    ();
-    Q_INVOKABLE void disconnect	    ();
-    Q_INVOKABLE void sendCommand    (const QString& type, const QString& entity_id, int command, const QVariant& param);
+    Q_INVOKABLE void connect	    () override;
+    Q_INVOKABLE void disconnect	    () override;
+    Q_INVOKABLE void enterStandby   () override;
+    Q_INVOKABLE void leaveStandby   () override;
+    Q_INVOKABLE void sendCommand    (const QString& type, const QString& entity_id, int command, const QVariant& param) override;
 
     QString                         m_friendly_name;
 
