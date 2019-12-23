@@ -119,6 +119,11 @@ Dock::Dock(const QVariantMap &config, const QVariantMap &mdns, QObject *entities
     m_heartbeatTimeoutTimer->setSingleShot(true);
     m_heartbeatTimeoutTimer->setInterval(m_heartbeatCheckInterval/2);
     QObject::connect(m_heartbeatTimeoutTimer, &QTimer::timeout, this, &Dock::onHeartbeatTimeout);
+
+    // standby
+    QObject* obj = m_config->getQMLObject("standbyControl");
+    QObject::connect(obj, SIGNAL(standByOn()), this, SLOT(enterStandby()));
+    QObject::connect(obj, SIGNAL(standByOff()), this, SLOT(leaveStandby()));
 }
 
 
@@ -237,6 +242,7 @@ void Dock::disconnect()
 
 void Dock::enterStandby()
 {
+    qCDebug(m_log) << "Entering standby";
     m_heartbeatTimer->stop();
     m_heartbeatTimeoutTimer->stop();
 }
