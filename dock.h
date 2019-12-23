@@ -110,6 +110,12 @@ private:
     bool                            m_userDisconnect = false;
 
     QLoggingCategory&               m_log;
+
+    int                             m_heartbeatCheckInterval = 10000;
+    QTimer*                         m_heartbeatTimer = new QTimer(this);
+    void                            onHeartbeat();
+    QTimer*                         m_heartbeatTimeoutTimer = new QTimer(this);
+    void                            onHeartbeatTimeout();
 };
 
 

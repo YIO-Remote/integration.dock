@@ -106,6 +106,15 @@ Dock::Dock(const QVariantMap &config, const QVariantMap &mdns, QObject *entities
     QObject::connect(m_socket, SIGNAL(stateChanged(QAbstractSocket::SocketState)), this, SLOT(onStateChanged(QAbstractSocket::SocketState)));
 
     QObject::connect(m_websocketReconnect, SIGNAL(timeout()), this, SLOT(onTimeout()));
+
+    // set up timer to check heartbeat
+    m_heartbeatTimer->setInterval(m_heartbeatCheckInterval);
+    QObject::connect(m_heartbeatTimer, &QTimer::timeout, this, &Dock::onHeartbeat);
+
+    // set up heartbeat timeout timer
+    m_heartbeatTimeoutTimer->setSingleShot(true);
+    m_heartbeatTimeoutTimer->setInterval(m_heartbeatCheckInterval/2);
+    QObject::connect(m_heartbeatTimeoutTimer, &QTimer::timeout, this, &Dock::onHeartbeatTimeout);
 }
 
 
@@ -136,6 +145,13 @@ void Dock::onTextMessageReceived(const QString &message)
     if (type == "auth_ok") {
         qCDebug(m_log) << "Connection successful:" << m_friendly_name;
         setState(CONNECTED);
+        m_heartbeatTimer->start();
+    }
+
+    // heartbeat
+    if (type == "dock" && map.value("message").toString() == "pong"){
+        qCDebug(m_log) << "Got heartbeat from dock!";
+        m_heartbeatTimeoutTimer->stop();
     }
 }
 
@@ -208,6 +224,10 @@ void Dock::disconnect()
     // turn off the socket
     m_socket->close();
 
+    // stop heartbeat pings
+    m_heartbeatTimer->stop();
+    m_heartbeatTimeoutTimer->stop();
+
     setState(DISCONNECTED);
 }
 
@@ -278,4 +298,18 @@ QStringList Dock::findIRCode(const QString &feature, QVariantList& list)
         r.append("");
 
     return r;
+}
+
+void Dock::onHeartbeat()
+{
+    qCDebug(m_log) << "Sending heartbeat request";
+    QString msg = QString("{ \"type\": \"dock\", \"command\": \"ping\" }\n");
+    m_socket->sendTextMessage(msg);
+    m_heartbeatTimeoutTimer->start(m_heartbeatCheckInterval);
+}
+
+void Dock::onHeartbeatTimeout()
+{
+    disconnect();
+    m_notifications->add(true,tr("Connection lost to ").append(m_friendly_name).append("."), tr("Reconnect"), "dock");
 }
