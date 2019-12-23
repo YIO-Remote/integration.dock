@@ -38,7 +38,10 @@ void DockPlugin::create(const QVariantMap &config, QObject *entities, QObject *n
     YioAPIInterface* m_api = qobject_cast<YioAPIInterface *>(api);
     QString mdns = "_yio-dock-api._tcp";
 
+    QTimer* timeOutTimer = new QTimer();
+
     connect(m_api, &YioAPIInterface::serviceDiscovered, this, [=](QMap<QString, QVariantMap> services){
+        timeOutTimer->stop();
         QMap<QObject *, QVariant> returnData;
         QVariantList data;
 
@@ -63,10 +66,11 @@ void DockPlugin::create(const QVariantMap &config, QObject *entities, QObject *n
     m_api->discoverNetworkServices(mdns);
 
     // start a timeout timer if no docks are discovered
-    QTimer* timeOutTimer = new QTimer();
     timeOutTimer->setSingleShot(true);
     connect(timeOutTimer, &QTimer::timeout, this, [=](){
         QMap<QObject *, QVariant> returnData;
+        NotificationsInterface* m_notifications = qobject_cast<NotificationsInterface *>(notifications);
+        m_notifications->add(true, "Cannot find any YIO Docks.");
         emit createDone(returnData);
     });
     timeOutTimer->start(5000);
@@ -85,7 +89,7 @@ Dock::Dock(const QVariantMap &config, const QVariantMap &mdns, QObject *entities
     m_ip = mdns.value("ip").toString();
     m_token = "0";
     m_id = mdns.value("name").toString();
-    m_friendly_name = mdns.value("txt").toMap().value("friendly_name").toString();
+    m_friendly_name = mdns.value("txt").toMap().value("FriendlyName").toString();
 
     m_entities = qobject_cast<EntitiesInterface *>(entities);
     m_notifications = qobject_cast<NotificationsInterface *>(notifications);
@@ -305,7 +309,7 @@ void Dock::onHeartbeat()
     qCDebug(m_log) << "Sending heartbeat request";
     QString msg = QString("{ \"type\": \"dock\", \"command\": \"ping\" }\n");
     m_socket->sendTextMessage(msg);
-    m_heartbeatTimeoutTimer->start(m_heartbeatCheckInterval);
+    m_heartbeatTimeoutTimer->start();
 }
 
 void Dock::onHeartbeatTimeout()
