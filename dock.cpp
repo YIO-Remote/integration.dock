@@ -42,10 +42,12 @@ void DockPlugin::create(const QVariantMap &config, QObject *entities, QObject *n
 
     connect(m_api, &YioAPIInterface::serviceDiscovered, this, [=](QMap<QString, QVariantMap> services){
         timeOutTimer->stop();
+
         QMap<QObject *, QVariant> returnData;
         QVariantList data;
-
         QVariantMap conf = config;
+
+        qCDebug(m_log) << "Docks discovered: " << services;
 
         // let's go through the returned list of discovered docks
         QMap<QString, QVariantMap>::iterator i;
@@ -77,6 +79,7 @@ void DockPlugin::create(const QVariantMap &config, QObject *entities, QObject *n
         NotificationsInterface* m_notifications = qobject_cast<NotificationsInterface *>(notifications);
         m_notifications->add(true, "Cannot find any YIO Docks.");
         emit createDone(returnData);
+        timeOutTimer->deleteLater();
     });
     timeOutTimer->start(5000);
 }
@@ -89,7 +92,6 @@ void DockPlugin::create(const QVariantMap &config, QObject *entities, QObject *n
 Dock::Dock(const QVariantMap &config, const QVariantMap &mdns, QObject *entities, QObject *notifications, QObject *api, QObject *configObj, QLoggingCategory& log) :
     m_log(log)
 {
-    qCDebug(m_log) << config;
     Integration::setup(config, entities);
 
     m_ip = mdns.value("ip").toString();
