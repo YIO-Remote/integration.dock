@@ -40,7 +40,9 @@ void DockPlugin::create(const QVariantMap &config, QObject *entities, QObject *n
 
     QTimer* timeOutTimer = new QTimer();
 
-    connect(m_api, &YioAPIInterface::serviceDiscovered, this, [=](QMap<QString, QVariantMap> services){
+    QObject* context = new QObject(this);
+
+    connect(m_api, &YioAPIInterface::serviceDiscovered, context, [=](QMap<QString, QVariantMap> services){
         timeOutTimer->stop();
 
         QMap<QObject *, QVariant> returnData;
@@ -67,6 +69,7 @@ void DockPlugin::create(const QVariantMap &config, QObject *entities, QObject *n
         }
 
         emit createDone(returnData);
+        delete context;
     });
 
     // start the MDNS discovery

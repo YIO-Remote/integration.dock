@@ -113,7 +113,7 @@ private:
 
     QLoggingCategory&               m_log;
 
-    int                             m_heartbeatCheckInterval = 10000;
+    int                             m_heartbeatCheckInterval = 60000;
     QTimer*                         m_heartbeatTimer = new QTimer(this);
     void                            onHeartbeat();
     QTimer*                         m_heartbeatTimeoutTimer = new QTimer(this);
