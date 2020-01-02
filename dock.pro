@@ -20,7 +20,7 @@ isEmpty(REMOTE_SRC) {
 
 HEADERS         = dock.h \
                   $$REMOTE_SRC/sources/integrations/integration.h \
-                  $$REMOTE_SRC/sources/integrations/integrationinterface.h \
+                  $$REMOTE_SRC/sources/integrations/plugininterface.h \
                   $$REMOTE_SRC/sources/yioapiinterface.h
 SOURCES         = dock.cpp
 TARGET          = dock
