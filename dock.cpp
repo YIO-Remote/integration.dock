@@ -44,6 +44,7 @@ void DockPlugin::create(const QVariantMap &config, QObject *entities, QObject *n
 
     connect(m_api, &YioAPIInterface::serviceDiscovered, context, [=](QMap<QString, QVariantMap> services){
         timeOutTimer->stop();
+        timeOutTimer->deleteLater();
 
         QMap<QObject *, QVariant> returnData;
         QVariantList data;
@@ -83,6 +84,7 @@ void DockPlugin::create(const QVariantMap &config, QObject *entities, QObject *n
         m_notifications->add(true, "Cannot find any YIO Docks.");
         emit createDone(returnData);
         timeOutTimer->deleteLater();
+        delete context;
     });
     timeOutTimer->start(5000);
 }
