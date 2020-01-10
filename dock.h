@@ -33,14 +33,11 @@
 #include <QVariant>
 #include <QtWebSockets/QWebSocket>
 
-#include "../remote-software/sources/configinterface.h"
-#include "../remote-software/sources/entities/entitiesinterface.h"
-#include "../remote-software/sources/entities/entityinterface.h"
-#include "../remote-software/sources/entities/remoteinterface.h"
-#include "../remote-software/sources/integrations/integration.h"
-#include "../remote-software/sources/integrations/plugininterface.h"
-#include "../remote-software/sources/notificationsinterface.h"
-#include "../remote-software/sources/yioapiinterface.h"
+#include "yio-interface/configinterface.h"
+#include "yio-plugin/integration.h"
+#include "yio-interface/plugininterface.h"
+#include "yio-interface/notificationsinterface.h"
+#include "yio-interface/yioapiinterface.h"
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //// DOCK FACTORY

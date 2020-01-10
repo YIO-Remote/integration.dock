@@ -18,11 +18,13 @@ isEmpty(REMOTE_SRC) {
     error( "Couldn't find the qmake-destination-path.pri file!" )
 }
 
-HEADERS         = dock.h \
-                  $$REMOTE_SRC/sources/integrations/integration.h \
-                  $$REMOTE_SRC/sources/integrations/plugininterface.h \
-                  $$REMOTE_SRC/sources/yioapiinterface.h
-SOURCES         = dock.cpp
+! include(../integrations.library/plugin-library.pri) {
+    error( "Couldn't find the plugin-library.pri file!" )
+}
+
+
+HEADERS         += dock.h
+SOURCES         += dock.cpp
 TARGET          = dock
 
 # Configure destination path. DESTDIR is set in qmake-destination-path.pri
