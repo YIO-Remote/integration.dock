@@ -321,7 +321,7 @@ void Dock::sendCommand(const QString &type, const QString &entity_id,
   }
 }
 
-QStringList Dock::findIRCode(const QString &feature, QVariantList &list) {
+QStringList Dock::findIRCode(const QString &feature, const QVariantList &list) {
   QStringList r;
 
   for (int i = 0; i < list.length(); i++) {
