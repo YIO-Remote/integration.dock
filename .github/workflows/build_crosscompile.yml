@@ -1,8 +1,9 @@
 # GitHub Action to cross compile a YIO Remote Qt project for the YIO remote-os.
-# Uses the pre-build Buildroot SDK from remote-os.
+# Uses the pre-built Buildroot SDK from remote-os.
 #
 # TODO:
 # - Version tag / branch for integrations.library
+# - Create a re-usable GitHub Action
 
 name: Cross Compile
 
