@@ -27,16 +27,17 @@
 #include <QJsonDocument>
 #include <QtDebug>
 
-#include "../remote-software/sources/entities/entity.h"
-#include "../remote-software/sources/entities/remoteinterface.h"
 #include "math.h"
+#include "yio-interface/entities/entitiesinterface.h"
+#include "yio-interface/entities/entityinterface.h"
+#include "yio-interface/entities/remoteinterface.h"
 
 IntegrationInterface::~IntegrationInterface() {}
 
 void DockPlugin::create(const QVariantMap &config, QObject *entities, QObject *notifications, QObject *api,
                         QObject *configObj) {
     YioAPIInterface *m_api = qobject_cast<YioAPIInterface *>(api);
-    QString          mdns  = "_yio-dock-api._tcp";
+    QString          mdns = "_yio-dock-api._tcp";
 
     QTimer *timeOutTimer = new QTimer();
 
@@ -54,15 +55,25 @@ void DockPlugin::create(const QVariantMap &config, QObject *entities, QObject *n
 
         // let's go through the returned list of discovered docks
         QMap<QString, QVariantMap>::iterator i;
+        // FIXME clean up friendlyName and integrationId!
         for (i = services.begin(); i != services.end(); i++) {
-            conf.insert("id", i.value().value("name").toString());
-            conf.insert("friendly_name", i.value().value("txt").toMap().value("FriendlyName").toString());
+            QString integrationId = i.value().value("name").toString();
+            QString friendlyName = i.value().value("txt").toMap().value("FriendlyName").toString();
+            if (friendlyName.isEmpty()) {
+                friendlyName = i.value().value("name").toString();
+            }
 
+            conf.insert("id", integrationId);
+            conf.insert("friendly_name", friendlyName);
+
+            // FIXME make friendlyName & id required constructor parameters?
             Dock *db = new Dock(conf, i.value(), entities, notifications, api, configObj, m_log);
+            db->setFriendlyName(friendlyName);
+            db->setIntegrationId(integrationId);
 
             QVariantMap d;
-            d.insert("id", i.value().value("name").toString());
-            d.insert("friendly_name", i.value().value("txt").toMap().value("FriendlyName").toString());
+            d.insert("id", integrationId);
+            d.insert("friendly_name", friendlyName);
             d.insert("mdns", mdns);
             d.insert("type", config.value("type").toString());
             returnData.insert(db, d);
@@ -97,14 +108,14 @@ Dock::Dock(const QVariantMap &config, const QVariantMap &mdns, QObject *entities
     : m_log(log) {
     Integration::setup(config, entities);
 
-    m_ip    = mdns.value("ip").toString();
+    m_ip = mdns.value("ip").toString();
     m_token = "0";
-    m_id    = mdns.value("name").toString();
+    m_id = mdns.value("name").toString();
 
-    m_entities      = qobject_cast<EntitiesInterface *>(entities);
+    m_entities = qobject_cast<EntitiesInterface *>(entities);
     m_notifications = qobject_cast<NotificationsInterface *>(notifications);
-    m_api           = qobject_cast<YioAPIInterface *>(api);
-    m_config        = qobject_cast<ConfigInterface *>(configObj);
+    m_api = qobject_cast<YioAPIInterface *>(api);
+    m_config = qobject_cast<ConfigInterface *>(configObj);
 
     m_websocketReconnect = new QTimer();
 
@@ -157,7 +168,7 @@ void Dock::onTextMessageReceived(const QString &message) {
     }
 
     if (type == "auth_ok") {
-        qCDebug(m_log) << "Connection successful:" << friendlyName();
+        qCDebug(m_log) << "Connection successful:" << friendlyName() << m_ip << m_id;
         setState(CONNECTED);
         m_heartbeatTimer->start();
     }
@@ -258,7 +269,7 @@ void Dock::sendCommand(const QString &type, const QString &entity_id, int comman
     Q_UNUSED(param)
     if (type == "remote") {
         // get the remote enityt from the entity database
-        EntityInterface *entity          = m_entities->getEntityInterface(entity_id);
+        EntityInterface *entity = m_entities->getEntityInterface(entity_id);
         RemoteInterface *remoteInterface = static_cast<RemoteInterface *>(entity->getSpecificInterface());
 
         // get all the commands the entity can do (IR codes)
@@ -266,7 +277,7 @@ void Dock::sendCommand(const QString &type, const QString &entity_id, int comman
 
         // find the IR code that matches the command we got from the UI
         QString     commandText = entity->getCommandName(command);
-        QStringList IRcommand   = findIRCode(commandText, commands);
+        QStringList IRcommand = findIRCode(commandText, commands);
 
         if (IRcommand[0] != "") {
             // send the request to the dock
@@ -275,7 +286,7 @@ void Dock::sendCommand(const QString &type, const QString &entity_id, int comman
             msg.insert("command", QVariant("ir_send"));
             msg.insert("code", IRcommand[0]);
             msg.insert("format", IRcommand[1]);
-            QJsonDocument doc     = QJsonDocument::fromVariant(msg);
+            QJsonDocument doc = QJsonDocument::fromVariant(msg);
             QString       message = doc.toJson(QJsonDocument::JsonFormat::Compact);
 
             // send the message through the websocket api
@@ -289,21 +300,21 @@ void Dock::sendCommand(const QString &type, const QString &entity_id, int comman
             QVariantMap msg;
             msg.insert("type", QVariant("dock"));
             msg.insert("command", QVariant("remote_charged"));
-            QJsonDocument doc     = QJsonDocument::fromVariant(msg);
+            QJsonDocument doc = QJsonDocument::fromVariant(msg);
             QString       message = doc.toJson(QJsonDocument::JsonFormat::Compact);
             m_socket->sendTextMessage(message);
         } else if (command == RemoteDef::C_REMOTE_LOWBATTERY) {
             QVariantMap msg;
             msg.insert("type", QVariant("dock"));
             msg.insert("command", QVariant("remote_lowbattery"));
-            QJsonDocument doc     = QJsonDocument::fromVariant(msg);
+            QJsonDocument doc = QJsonDocument::fromVariant(msg);
             QString       message = doc.toJson(QJsonDocument::JsonFormat::Compact);
             m_socket->sendTextMessage(message);
         }
     }
 }
 
-QStringList Dock::findIRCode(const QString &feature, QVariantList &list) {
+QStringList Dock::findIRCode(const QString &feature, const QVariantList &list) {
     QStringList r;
 
     for (int i = 0; i < list.length(); i++) {
@@ -314,8 +325,7 @@ QStringList Dock::findIRCode(const QString &feature, QVariantList &list) {
         }
     }
 
-    if (r.length() == 0)
-        r.append("");
+    if (r.length() == 0) r.append("");
 
     return r;
 }

@@ -1,29 +1,27 @@
-TEMPLATE        = lib
-CONFIG         += plugin
-QT             += websockets core quick
+TEMPLATE  = lib
+CONFIG   += plugin
+QT       += websockets core quick
 
-REMOTE_SRC = $$(YIO_SRC)
-isEmpty(REMOTE_SRC) {
-    REMOTE_SRC = $$clean_path($$PWD/../remote-software)
-    warning("Environment variables YIO_SRC not defined! Using '$$REMOTE_SRC' for remote-software project.")
+INTG_LIB_PATH = $$(YIO_SRC)
+isEmpty(INTG_LIB_PATH) {
+    INTG_LIB_PATH = $$clean_path($$PWD/../integrations.library)
+    message("Environment variables YIO_SRC not defined! Using '$$INTG_LIB_PATH' for integrations.library project.")
 } else {
-    REMOTE_SRC = $$(YIO_SRC)/remote-software
-    message("YIO_SRC is set: using '$$REMOTE_SRC' for remote-software project.")
+    INTG_LIB_PATH = $$(YIO_SRC)/integrations.library
+    message("YIO_SRC is set: using '$$INTG_LIB_PATH' for integrations.library project.")
 }
 
-! include($$REMOTE_SRC/qmake-target-platform.pri) {
-    error( "Couldn't find the qmake-target-platform.pri file!" )
-}
-! include($$REMOTE_SRC/qmake-destination-path.pri) {
+! include($$INTG_LIB_PATH/qmake-destination-path.pri) {
     error( "Couldn't find the qmake-destination-path.pri file!" )
 }
 
-HEADERS         = dock.h \
-                  $$REMOTE_SRC/sources/integrations/integration.h \
-                  $$REMOTE_SRC/sources/integrations/plugininterface.h \
-                  $$REMOTE_SRC/sources/yioapiinterface.h
-SOURCES         = dock.cpp
-TARGET          = dock
+! include($$INTG_LIB_PATH/yio-plugin-lib.pri) {
+    error( "Cannot find the yio-plugin-lib.pri file!" )
+}
+
+HEADERS  += src/dock.h
+SOURCES  += src/dock.cpp
+TARGET    = dock
 
 # Configure destination path. DESTDIR is set in qmake-destination-path.pri
 DESTDIR = $$DESTDIR/plugins
