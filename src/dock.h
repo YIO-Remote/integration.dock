@@ -37,27 +37,24 @@
 #include "yio-interface/plugininterface.h"
 #include "yio-interface/yioapiinterface.h"
 #include "yio-plugin/integration.h"
+#include "yio-plugin/plugin.h"
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //// DOCK FACTORY
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-class DockPlugin : public PluginInterface {
-  Q_OBJECT
-  Q_PLUGIN_METADATA(IID "YIO.PluginInterface" FILE "dock.json")
-  Q_INTERFACES(PluginInterface)
+class DockPlugin : public Plugin {
+    Q_OBJECT
+    Q_INTERFACES(PluginInterface)
+    Q_PLUGIN_METADATA(IID "YIO.PluginInterface" FILE "dock.json")
 
  public:
-  DockPlugin() : m_log("dock") {}
+    DockPlugin();
 
-  void create(const QVariantMap& config, QObject* entities,
-              QObject* notifications, QObject* api,
-              QObject* configObj) override;
-  void setLogEnabled(QtMsgType msgType, bool enable) override {
-    m_log.setEnabled(msgType, enable);
-  }
-
- private:
-  QLoggingCategory m_log;
+    // Plugin interface
+ protected:
+    Integration* createIntegration(const QVariantMap& config, EntitiesInterface* entities,
+                                   NotificationsInterface* notifications, YioAPIInterface* api,
+                                   ConfigInterface* configObj) override;
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -65,54 +62,42 @@ class DockPlugin : public PluginInterface {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 class Dock : public Integration {
-  Q_OBJECT
+    Q_OBJECT
 
  public:
-  explicit Dock(const QVariantMap& config, const QVariantMap& mdns,
-                QObject* entities, QObject* notifications, QObject* api,
-                QObject* configObj,
-                QLoggingCategory& log);  // NOLINT can't use const
+    explicit Dock(const QVariantMap& config, const QVariantMap& mdns, EntitiesInterface* entities,
+                  NotificationsInterface* notifications, YioAPIInterface* api, ConfigInterface* configObj,
+                  Plugin* plugin);
 
-  Q_INVOKABLE void connect() override;
-  Q_INVOKABLE void disconnect() override;
-  Q_INVOKABLE void enterStandby() override;
-  Q_INVOKABLE void leaveStandby() override;
-  Q_INVOKABLE void sendCommand(const QString& type, const QString& entity_id,
-                               int command, const QVariant& param) override;
-
-  QString m_friendly_name;
+    Q_INVOKABLE void connect() override;
+    Q_INVOKABLE void disconnect() override;
+    Q_INVOKABLE void enterStandby() override;
+    Q_INVOKABLE void leaveStandby() override;
+    Q_INVOKABLE void sendCommand(const QString& type, const QString& entity_id, int command,
+                                 const QVariant& param) override;
 
  public slots:  // NOLINT open issue: https://github.com/cpplint/cpplint/pull/99
-  void onTextMessageReceived(const QString& message);
-  void onStateChanged(QAbstractSocket::SocketState state);
-  void onError(QAbstractSocket::SocketError error);
-
-  void onTimeout();
+    void onTextMessageReceived(const QString& message);
+    void onStateChanged(QAbstractSocket::SocketState state);
+    void onError(QAbstractSocket::SocketError error);
+    void onTimeout();
 
  private:
-  void webSocketSendCommand(const QString& domain, const QString& service,
-                            const QString& entity_id, QVariantMap* data);
-  void updateEntity(const QString& entity_id, const QVariantMap& attr);
-  QStringList findIRCode(const QString& feature, const QVariantList& list);
+    void        webSocketSendCommand(const QString& domain, const QString& service, const QString& entity_id,
+                                     QVariantMap* data);
+    void        updateEntity(const QString& entity_id, const QVariantMap& attr);
+    QStringList findIRCode(const QString& feature, const QVariantList& list);
+    void        onHeartbeat();
+    void        onHeartbeatTimeout();
 
-  NotificationsInterface* m_notifications;
-  YioAPIInterface* m_api;
-  ConfigInterface* m_config;
-
-  QString m_id;
-
-  QString m_ip;
-  QString m_token;
-  QWebSocket* m_socket;
-  QTimer* m_websocketReconnect;
-  int m_tries;
-  bool m_userDisconnect = false;
-
-  QLoggingCategory& m_log;
-
-  int m_heartbeatCheckInterval = 30000;
-  QTimer* m_heartbeatTimer = new QTimer(this);
-  void onHeartbeat();
-  QTimer* m_heartbeatTimeoutTimer = new QTimer(this);
-  void onHeartbeatTimeout();
+    QString     m_id;
+    QString     m_ip;
+    QString     m_token;
+    QWebSocket* m_webSocket;
+    QTimer*     m_wsReconnectTimer;
+    int         m_tries;
+    bool        m_userDisconnect = false;
+    int         m_heartbeatCheckInterval = 30000;
+    QTimer*     m_heartbeatTimer = new QTimer(this);
+    QTimer*     m_heartbeatTimeoutTimer = new QTimer(this);
 };
