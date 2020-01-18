@@ -37,24 +37,24 @@
 #include "yio-interface/plugininterface.h"
 #include "yio-interface/yioapiinterface.h"
 #include "yio-plugin/integration.h"
+#include "yio-plugin/plugin.h"
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //// DOCK FACTORY
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-class DockPlugin : public PluginInterface {
+class DockPlugin : public Plugin {
     Q_OBJECT
-    Q_PLUGIN_METADATA(IID "YIO.PluginInterface" FILE "dock.json")
     Q_INTERFACES(PluginInterface)
+    Q_PLUGIN_METADATA(IID "YIO.PluginInterface" FILE "dock.json")
 
  public:
-    DockPlugin() : m_log("dock") {}
+    DockPlugin();
 
-    void create(const QVariantMap& config, EntitiesInterface* entities, NotificationsInterface* notifications,
-                YioAPIInterface* api, ConfigInterface* configObj) override;
-    void setLogEnabled(QtMsgType msgType, bool enable) override { m_log.setEnabled(msgType, enable); }
-
- private:
-    QLoggingCategory m_log;
+    // Plugin interface
+ protected:
+    Integration* createIntegration(const QVariantMap& config, EntitiesInterface* entities,
+                                   NotificationsInterface* notifications, YioAPIInterface* api,
+                                   ConfigInterface* configObj) override;
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -67,7 +67,7 @@ class Dock : public Integration {
  public:
     explicit Dock(const QVariantMap& config, const QVariantMap& mdns, EntitiesInterface* entities,
                   NotificationsInterface* notifications, YioAPIInterface* api, ConfigInterface* configObj,
-                  QLoggingCategory& log);  // NOLINT can't use const
+                  Plugin* plugin);
 
     Q_INVOKABLE void connect() override;
     Q_INVOKABLE void disconnect() override;
@@ -75,8 +75,6 @@ class Dock : public Integration {
     Q_INVOKABLE void leaveStandby() override;
     Q_INVOKABLE void sendCommand(const QString& type, const QString& entity_id, int command,
                                  const QVariant& param) override;
-
-    QString m_friendly_name;
 
  public slots:  // NOLINT open issue: https://github.com/cpplint/cpplint/pull/99
     void onTextMessageReceived(const QString& message);
@@ -92,11 +90,6 @@ class Dock : public Integration {
     void        onHeartbeat();
     void        onHeartbeatTimeout();
 
-    NotificationsInterface* m_notifications;
-    YioAPIInterface*        m_api;
-    ConfigInterface*        m_config;
-    QLoggingCategory&       m_log;
-
     QString     m_id;
     QString     m_ip;
     QString     m_token;
@@ -104,8 +97,7 @@ class Dock : public Integration {
     QTimer*     m_wsReconnectTimer;
     int         m_tries;
     bool        m_userDisconnect = false;
-
-    int     m_heartbeatCheckInterval = 30000;
-    QTimer* m_heartbeatTimer = new QTimer(this);
-    QTimer* m_heartbeatTimeoutTimer = new QTimer(this);
+    int         m_heartbeatCheckInterval = 30000;
+    QTimer*     m_heartbeatTimer = new QTimer(this);
+    QTimer*     m_heartbeatTimeoutTimer = new QTimer(this);
 };

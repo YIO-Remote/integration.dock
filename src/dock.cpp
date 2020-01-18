@@ -34,16 +34,16 @@
 
 IntegrationInterface::~IntegrationInterface() {}
 
-void DockPlugin::create(const QVariantMap &config, EntitiesInterface *entities, NotificationsInterface *notifications,
-                        YioAPIInterface *api, ConfigInterface *configObj) {
-    YioAPIInterface *m_api = qobject_cast<YioAPIInterface *>(api);
-    QString          mdns = "_yio-dock-api._tcp";
+DockPlugin::DockPlugin() : Plugin("dock", false) {}
 
-    QTimer *timeOutTimer = new QTimer();
-
+Integration *DockPlugin::createIntegration(const QVariantMap &config, EntitiesInterface *entities,
+                                           NotificationsInterface *notifications, YioAPIInterface *api,
+                                           ConfigInterface *configObj) {
+    QString  mdns = "_yio-dock-api._tcp";
+    QTimer * timeOutTimer = new QTimer();
     QObject *context = new QObject(this);
 
-    connect(m_api, &YioAPIInterface::serviceDiscovered, context, [=](QMap<QString, QVariantMap> services) {
+    connect(api, &YioAPIInterface::serviceDiscovered, context, [=](QMap<QString, QVariantMap> services) {
         timeOutTimer->stop();
         timeOutTimer->deleteLater();
 
@@ -51,7 +51,7 @@ void DockPlugin::create(const QVariantMap &config, EntitiesInterface *entities, 
         QVariantList              data;
         QVariantMap               conf = config;
 
-        qCDebug(m_log) << "Docks discovered: " << services;
+        qCDebug(m_logCategory) << "Docks discovered: " << services;
 
         // let's go through the returned list of discovered docks
         QMap<QString, QVariantMap>::iterator i;
@@ -63,20 +63,20 @@ void DockPlugin::create(const QVariantMap &config, EntitiesInterface *entities, 
                 friendlyName = i.value().value("name").toString();
             }
 
-            conf.insert("id", integrationId);
-            conf.insert("friendly_name", friendlyName);
+            conf.insert(Integration::KEY_ID, integrationId);
+            conf.insert(Integration::KEY_FRIENDLYNAME, friendlyName);
 
             // FIXME make friendlyName & id required constructor parameters?
-            Dock *db = new Dock(conf, i.value(), entities, notifications, api, configObj, m_log);
-            db->setFriendlyName(friendlyName);
-            db->setIntegrationId(integrationId);
+            Dock *dock = new Dock(conf, i.value(), entities, notifications, api, configObj, this);
+            dock->setFriendlyName(friendlyName);
+            dock->setIntegrationId(integrationId);
 
             QVariantMap d;
-            d.insert("id", integrationId);
-            d.insert("friendly_name", friendlyName);
-            d.insert("mdns", mdns);
-            d.insert("type", config.value("type").toString());
-            returnData.insert(db, d);
+            d.insert(Integration::KEY_ID, integrationId);
+            d.insert(Integration::KEY_FRIENDLYNAME, friendlyName);
+            d.insert(Integration::KEY_MDNS, mdns);
+            d.insert(Integration::KEY_TYPE, config.value(Integration::KEY_TYPE).toString());
+            returnData.insert(dock, d);
         }
 
         emit createDone(returnData);
@@ -84,12 +84,12 @@ void DockPlugin::create(const QVariantMap &config, EntitiesInterface *entities, 
     });
 
     // start the MDNS discovery
-    m_api->discoverNetworkServices(mdns);
+    api->discoverNetworkServices(mdns);
 
     // start a timeout timer if no docks are discovered
     timeOutTimer->setSingleShot(true);
     connect(timeOutTimer, &QTimer::timeout, this, [=]() {
-        qCWarning(m_log) << "Cannot find any YIO Docks.";
+        qCWarning(m_logCategory) << "Cannot find any YIO Docks.";
         QMap<QObject *, QVariant> returnData;
 
         notifications->add(true, "Cannot find any YIO Docks.");
@@ -98,6 +98,9 @@ void DockPlugin::create(const QVariantMap &config, EntitiesInterface *entities, 
         delete context;
     });
     timeOutTimer->start(5000);
+
+    // FIXME Plugin base class doesn't work for auto discovery
+    return nullptr;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -105,17 +108,14 @@ void DockPlugin::create(const QVariantMap &config, EntitiesInterface *entities, 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 Dock::Dock(const QVariantMap &config, const QVariantMap &mdns, EntitiesInterface *entities,
-           NotificationsInterface *notifications, YioAPIInterface *api, ConfigInterface *configObj,
-           QLoggingCategory &log)
-    : m_notifications(notifications), m_api(api), m_config(configObj), m_log(log) {
-    Integration::setup(config, entities);
-
+           NotificationsInterface *notifications, YioAPIInterface *api, ConfigInterface *configObj, Plugin *plugin)
+    : Integration(config, entities, notifications, api, configObj, plugin) {
     m_ip = mdns.value("ip").toString();
     m_token = "0";
     m_id = mdns.value("name").toString();
     m_entities = entities;
-    m_wsReconnectTimer = new QTimer();
 
+    m_wsReconnectTimer = new QTimer();
     m_wsReconnectTimer->setSingleShot(true);
     m_wsReconnectTimer->setInterval(2000);
     m_wsReconnectTimer->stop();
@@ -146,14 +146,14 @@ void Dock::onTextMessageReceived(const QString &message) {
     QJsonParseError parseerror;
     QJsonDocument   doc = QJsonDocument::fromJson(message.toUtf8(), &parseerror);
     if (parseerror.error != QJsonParseError::NoError) {
-        qCDebug(m_log) << "JSON error : " << parseerror.errorString();
+        qCDebug(m_logCategory) << "JSON error : " << parseerror.errorString();
         return;
     }
     QVariantMap map = doc.toVariant().toMap();
 
     QString m = map.value("error").toString();
     if (m.length() > 0) {
-        qCDebug(m_log) << "error : " << m;
+        qCDebug(m_logCategory) << "error : " << m;
     }
 
     QString type = map.value("type").toString();
@@ -165,14 +165,14 @@ void Dock::onTextMessageReceived(const QString &message) {
     }
 
     if (type == "auth_ok") {
-        qCDebug(m_log) << "Connection successful:" << friendlyName() << m_ip << m_id;
+        qCDebug(m_logCategory) << "Connection successful:" << friendlyName() << m_ip << m_id;
         setState(CONNECTED);
         m_heartbeatTimer->start();
     }
 
     // heartbeat
     if (type == "dock" && map.value("message").toString() == "pong") {
-        qCDebug(m_log) << "Got heartbeat from dock!";
+        qCDebug(m_logCategory) << "Got heartbeat from dock!";
         m_heartbeatTimeoutTimer->stop();
     }
 }
@@ -185,7 +185,7 @@ void Dock::onStateChanged(QAbstractSocket::SocketState state) {
 }
 
 void Dock::onError(QAbstractSocket::SocketError error) {
-    qCDebug(m_log) << error;
+    qCDebug(m_logCategory) << error;
     m_webSocket->close();
     setState(DISCONNECTED);
     m_wsReconnectTimer->start();
@@ -194,16 +194,15 @@ void Dock::onError(QAbstractSocket::SocketError error) {
 void Dock::onTimeout() {
     if (m_tries == 3) {
         m_wsReconnectTimer->stop();
-        qCCritical(m_log) << "Cannot connect to docking station: retried 3 times connecting to" << m_ip;
+        qCCritical(m_logCategory) << "Cannot connect to docking station: retried 3 times connecting to" << m_ip;
 
         QObject *param = this;
-        m_notifications->add(
-            true, tr("Cannot connect to ").append(friendlyName()).append("."), tr("Reconnect"),
-            [](QObject *param) {
-                Integration *i = qobject_cast<Integration *>(param);
-                i->connect();
-            },
-            param);
+        m_notifications->add(true, tr("Cannot connect to ").append(friendlyName()).append("."), tr("Reconnect"),
+                             [](QObject *param) {
+                                 Integration *i = qobject_cast<Integration *>(param);
+                                 i->connect();
+                             },
+                             param);
 
         disconnect();
         m_tries = 0;
@@ -212,7 +211,7 @@ void Dock::onTimeout() {
             setState(CONNECTING);
         }
         QString url = QString("ws://").append(m_ip).append(":946");
-        qCDebug(m_log) << "Reconnection attempt" << m_tries + 1 << "to docking station:" << url;
+        qCDebug(m_logCategory) << "Reconnection attempt" << m_tries + 1 << "to docking station:" << url;
         m_webSocket->open(QUrl(url));
 
         m_tries++;
@@ -241,13 +240,13 @@ void Dock::connect() {
     }
 
     QString url = QString("ws://").append(m_ip).append(":946");
-    qCDebug(m_log) << "Connecting to docking station:" << url;
+    qCDebug(m_logCategory) << "Connecting to docking station:" << url;
     m_webSocket->open(QUrl(url));
 }
 
 void Dock::disconnect() {
     m_userDisconnect = true;
-    qCDebug(m_log) << "Disconnecting from docking station";
+    qCDebug(m_logCategory) << "Disconnecting from docking station";
 
     // turn of the reconnect try
     m_wsReconnectTimer->stop();
@@ -263,7 +262,7 @@ void Dock::disconnect() {
 }
 
 void Dock::enterStandby() {
-    qCDebug(m_log) << "Entering standby";
+    qCDebug(m_logCategory) << "Entering standby";
     m_heartbeatTimer->stop();
     m_heartbeatTimeoutTimer->stop();
 }
@@ -336,7 +335,7 @@ QStringList Dock::findIRCode(const QString &feature, const QVariantList &list) {
 }
 
 void Dock::onHeartbeat() {
-    qCDebug(m_log) << "Sending heartbeat request";
+    qCDebug(m_logCategory) << "Sending heartbeat request";
     QString msg = QString("{ \"type\": \"dock\", \"command\": \"ping\" }\n");
     m_webSocket->sendTextMessage(msg);
     m_heartbeatTimeoutTimer->start();
@@ -346,11 +345,10 @@ void Dock::onHeartbeatTimeout() {
     disconnect();
 
     QObject *param = this;
-    m_notifications->add(
-        true, tr("Cannot connect to ").append(friendlyName()).append("."), tr("Reconnect"),
-        [](QObject *param) {
-            Integration *i = qobject_cast<Integration *>(param);
-            i->connect();
-        },
-        param);
+    m_notifications->add(true, tr("Cannot connect to ").append(friendlyName()).append("."), tr("Reconnect"),
+                         [](QObject *param) {
+                             Integration *i = qobject_cast<Integration *>(param);
+                             i->connect();
+                         },
+                         param);
 }
