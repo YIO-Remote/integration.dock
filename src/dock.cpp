@@ -32,8 +32,6 @@
 #include "yio-interface/entities/entityinterface.h"
 #include "yio-interface/entities/remoteinterface.h"
 
-IntegrationInterface::~IntegrationInterface() {}
-
 DockPlugin::DockPlugin() : Plugin("dock", false) {}
 
 Integration *DockPlugin::createIntegration(const QVariantMap &config, EntitiesInterface *entities,
