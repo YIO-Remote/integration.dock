@@ -42,6 +42,9 @@
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //// DOCK FACTORY
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+const bool USE_WORKER_THREAD = false;
+
 class DockPlugin : public Plugin {
     Q_OBJECT
     Q_INTERFACES(PluginInterface)
@@ -51,10 +54,13 @@ class DockPlugin : public Plugin {
     DockPlugin();
 
     // Plugin interface
- protected:
-    Integration* createIntegration(const QVariantMap& config, EntitiesInterface* entities,
-                                   NotificationsInterface* notifications, YioAPIInterface* api,
-                                   ConfigInterface* configObj) override;
+    /**
+     * @brief createIntegration Override default implementation in Plugin to allow MDNS discovery of multiple docks.
+     * @details The base class needs to be enhanced to handle non-configuration based integrations and multiple self
+     * discovered instances.
+     */
+    void create(const QVariantMap& config, EntitiesInterface* entities, NotificationsInterface* notifications,
+                YioAPIInterface* api, ConfigInterface* configObj) override;
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

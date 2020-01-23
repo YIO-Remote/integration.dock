@@ -32,11 +32,10 @@
 #include "yio-interface/entities/entityinterface.h"
 #include "yio-interface/entities/remoteinterface.h"
 
-DockPlugin::DockPlugin() : Plugin("dock", false) {}
+DockPlugin::DockPlugin() : Plugin("dock", USE_WORKER_THREAD) {}
 
-Integration *DockPlugin::createIntegration(const QVariantMap &config, EntitiesInterface *entities,
-                                           NotificationsInterface *notifications, YioAPIInterface *api,
-                                           ConfigInterface *configObj) {
+void DockPlugin::create(const QVariantMap &config, EntitiesInterface *entities, NotificationsInterface *notifications,
+                        YioAPIInterface *api, ConfigInterface *configObj) {
     QString  mdns = "_yio-dock-api._tcp";
     QTimer * timeOutTimer = new QTimer();
     QObject *context = new QObject(this);
@@ -96,9 +95,6 @@ Integration *DockPlugin::createIntegration(const QVariantMap &config, EntitiesIn
         delete context;
     });
     timeOutTimer->start(5000);
-
-    // FIXME Plugin base class doesn't work for auto discovery
-    return nullptr;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -144,14 +140,14 @@ void Dock::onTextMessageReceived(const QString &message) {
     QJsonParseError parseerror;
     QJsonDocument   doc = QJsonDocument::fromJson(message.toUtf8(), &parseerror);
     if (parseerror.error != QJsonParseError::NoError) {
-        qCDebug(m_logCategory) << "JSON error : " << parseerror.errorString();
+        qCWarning(m_logCategory) << "JSON error : " << parseerror.errorString();
         return;
     }
     QVariantMap map = doc.toVariant().toMap();
 
     QString m = map.value("error").toString();
     if (m.length() > 0) {
-        qCDebug(m_logCategory) << "error : " << m;
+        qCWarning(m_logCategory) << "error : " << m;
     }
 
     QString type = map.value("type").toString();
@@ -163,7 +159,7 @@ void Dock::onTextMessageReceived(const QString &message) {
     }
 
     if (type == "auth_ok") {
-        qCDebug(m_logCategory) << "Connection successful:" << friendlyName() << m_ip << m_id;
+        qCInfo(m_logCategory) << "Connection successful:" << friendlyName() << m_ip << m_id;
         setState(CONNECTED);
         m_heartbeatTimer->start();
     }
@@ -183,7 +179,7 @@ void Dock::onStateChanged(QAbstractSocket::SocketState state) {
 }
 
 void Dock::onError(QAbstractSocket::SocketError error) {
-    qCDebug(m_logCategory) << error;
+    qCWarning(m_logCategory) << error;
     m_webSocket->close();
     setState(DISCONNECTED);
     m_wsReconnectTimer->start();
@@ -195,12 +191,13 @@ void Dock::onTimeout() {
         qCCritical(m_logCategory) << "Cannot connect to docking station: retried 3 times connecting to" << m_ip;
 
         QObject *param = this;
-        m_notifications->add(true, tr("Cannot connect to ").append(friendlyName()).append("."), tr("Reconnect"),
-                             [](QObject *param) {
-                                 Integration *i = qobject_cast<Integration *>(param);
-                                 i->connect();
-                             },
-                             param);
+        m_notifications->add(
+            true, tr("Cannot connect to ").append(friendlyName()).append("."), tr("Reconnect"),
+            [](QObject *param) {
+                Integration *i = qobject_cast<Integration *>(param);
+                i->connect();
+            },
+            param);
 
         disconnect();
         m_tries = 0;
@@ -209,7 +206,7 @@ void Dock::onTimeout() {
             setState(CONNECTING);
         }
         QString url = QString("ws://").append(m_ip).append(":946");
-        qCDebug(m_logCategory) << "Reconnection attempt" << m_tries + 1 << "to docking station:" << url;
+        qCInfo(m_logCategory) << "Reconnection attempt" << m_tries + 1 << "to docking station:" << url;
         m_webSocket->open(QUrl(url));
 
         m_tries++;
@@ -343,10 +340,11 @@ void Dock::onHeartbeatTimeout() {
     disconnect();
 
     QObject *param = this;
-    m_notifications->add(true, tr("Cannot connect to ").append(friendlyName()).append("."), tr("Reconnect"),
-                         [](QObject *param) {
-                             Integration *i = qobject_cast<Integration *>(param);
-                             i->connect();
-                         },
-                         param);
+    m_notifications->add(
+        true, tr("Cannot connect to ").append(friendlyName()).append("."), tr("Reconnect"),
+        [](QObject *param) {
+            Integration *i = qobject_cast<Integration *>(param);
+            i->connect();
+        },
+        param);
 }
