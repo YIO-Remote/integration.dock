@@ -38,7 +38,7 @@ void DockPlugin::create(const QVariantMap &config, EntitiesInterface *entities, 
                         YioAPIInterface *api, ConfigInterface *configObj) {
     QString  mdns         = "_yio-dock-api._tcp";
     QTimer * timeOutTimer = new QTimer();
-    QObject *context      = new QObject(this);
+    QObject *context      = new QObject();
 
     connect(api, &YioAPIInterface::serviceDiscovered, context, [=](QMap<QString, QVariantMap> services) {
         timeOutTimer->stop();
@@ -77,7 +77,7 @@ void DockPlugin::create(const QVariantMap &config, EntitiesInterface *entities, 
         }
 
         emit createDone(returnData);
-        delete context;
+        context->deleteLater();
     });
 
     // start the MDNS discovery
@@ -92,7 +92,7 @@ void DockPlugin::create(const QVariantMap &config, EntitiesInterface *entities, 
         notifications->add(true, "Cannot find any YIO Docks.");
         emit createDone(returnData);
         timeOutTimer->deleteLater();
-        delete context;
+        context->deleteLater();
     });
     timeOutTimer->start(5000);
 }
@@ -186,6 +186,8 @@ void Dock::onError(QAbstractSocket::SocketError error) {
 }
 
 void Dock::onTimeout() {
+    qCDebug(m_logCategory) << "onTimeout!";
+
     if (m_tries == 3) {
         m_wsReconnectTimer->stop();
         qCCritical(m_logCategory) << "Cannot connect to docking station: retried 3 times connecting to" << m_ip;
@@ -213,15 +215,9 @@ void Dock::onTimeout() {
     }
 }
 
-void Dock::webSocketSendCommand(const QString &domain, const QString &service, const QString &entity_id,
-                                QVariantMap *data) {
-    Q_UNUSED(domain)
-    Q_UNUSED(service)
-    Q_UNUSED(entity_id)
-    Q_UNUSED(data)
-}
-
 void Dock::connect() {
+    qCDebug(m_logCategory) << "connect!";
+
     m_userDisconnect = false;
 
     setState(CONNECTING);
@@ -247,11 +243,17 @@ void Dock::disconnect() {
     m_heartbeatTimer->stop();
     m_heartbeatTimeoutTimer->stop();
 
+    qCDebug(m_logCategory) << "Stopped heartbeat timers";
+
     // turn of the reconnect try
     m_wsReconnectTimer->stop();
 
+    qCDebug(m_logCategory) << "Stopped reconnect timer";
+
     // turn off the socket
     m_webSocket->close();
+
+    qCDebug(m_logCategory) << "Closed websocket";
 
     setState(DISCONNECTED);
 }
@@ -260,12 +262,19 @@ void Dock::enterStandby() {
     qCDebug(m_logCategory) << "Entering standby";
     m_heartbeatTimer->stop();
     m_heartbeatTimeoutTimer->stop();
+    qCDebug(m_logCategory) << "Stopped heartbeat timers";
 }
 
-void Dock::leaveStandby() { m_heartbeatTimer->start(); }
+void Dock::leaveStandby() {
+    qCDebug(m_logCategory) << "Leaving standby";
+    m_heartbeatTimer->start();
+    qCDebug(m_logCategory) << "Started heartbeat timer";
+}
 
 void Dock::sendCommand(const QString &type, const QString &entity_id, int command, const QVariant &param) {
     Q_UNUSED(param)
+    qCDebug(m_logCategory) << "Sending command" << type << entity_id << command;
+
     if (type == "remote") {
         // get the remote enityt from the entity database
         EntityInterface *entity          = m_entities->getEntityInterface(entity_id);
@@ -334,11 +343,15 @@ void Dock::onHeartbeat() {
     qCDebug(m_logCategory) << "Sending heartbeat request";
     QString msg = QString("{ \"type\": \"dock\", \"command\": \"ping\" }\n");
     m_webSocket->sendTextMessage(msg);
+    qCDebug(m_logCategory) << "Started heartbeat timeout timer";
     m_heartbeatTimeoutTimer->start();
 }
 
 void Dock::onHeartbeatTimeout() {
+    qCDebug(m_logCategory) << "Heartbeat timeout!";
     disconnect();
+
+    qCDebug(m_logCategory) << "Creating notification";
 
     QObject *param = this;
     m_notifications->add(
@@ -348,4 +361,6 @@ void Dock::onHeartbeatTimeout() {
             i->connect();
         },
         param);
+
+    qCDebug(m_logCategory) << "Added notification";
 }

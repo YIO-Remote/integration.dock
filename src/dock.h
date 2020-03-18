@@ -89,8 +89,6 @@ class Dock : public Integration {
     void onTimeout();
 
  private:
-    void        webSocketSendCommand(const QString& domain, const QString& service, const QString& entity_id,
-                                     QVariantMap* data);
     void        updateEntity(const QString& entity_id, const QVariantMap& attr);
     QStringList findIRCode(const QString& feature, const QVariantList& list);
     void        onHeartbeat();
