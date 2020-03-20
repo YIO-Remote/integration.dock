@@ -1,3 +1,7 @@
+# Plugin VERSION
+VERSION = "$$system(git describe --match "v[0-9]*" --tags HEAD --always)"
+DEFINES += PLUGIN_VERSION=\\\"$$VERSION\\\"
+
 TEMPLATE  = lib
 CONFIG   += plugin
 QT       += websockets core quick
@@ -19,12 +23,16 @@ isEmpty(INTG_LIB_PATH) {
     error( "Cannot find the yio-plugin-lib.pri file!" )
 }
 
+QMAKE_SUBSTITUTES += dock.json.in
+# output path must be included for the output file from QMAKE_SUBSTITUTES
+INCLUDEPATH += $$OUT_PWD
 HEADERS  += src/dock.h
 SOURCES  += src/dock.cpp
 TARGET    = dock
 
 # Configure destination path. DESTDIR is set in qmake-destination-path.pri
 DESTDIR = $$DESTDIR/plugins
+
 OBJECTS_DIR = $$PWD/build/$$DESTINATION_PATH/obj
 MOC_DIR = $$PWD/build/$$DESTINATION_PATH/moc
 RCC_DIR = $$PWD/build/$$DESTINATION_PATH/qrc

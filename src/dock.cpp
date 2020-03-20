@@ -32,10 +32,12 @@
 #include "yio-interface/entities/entityinterface.h"
 #include "yio-interface/entities/remoteinterface.h"
 
-DockPlugin::DockPlugin() : Plugin("dock", USE_WORKER_THREAD) {}
+DockPlugin::DockPlugin() : Plugin("dock", NO_WORKER_THREAD) {}
 
 void DockPlugin::create(const QVariantMap &config, EntitiesInterface *entities, NotificationsInterface *notifications,
                         YioAPIInterface *api, ConfigInterface *configObj) {
+    qCInfo(m_logCategory) << "Creating Dock integration plugin" << PLUGIN_VERSION;
+
     QString  mdns         = "_yio-dock-api._tcp";
     QTimer * timeOutTimer = new QTimer();
     QObject *context      = new QObject();
