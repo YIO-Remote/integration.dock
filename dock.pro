@@ -1,6 +1,6 @@
 # Plugin VERSION
-VERSION = "$$system(git describe --match "v[0-9]*" --tags HEAD --always)"
-DEFINES += PLUGIN_VERSION=\\\"$$VERSION\\\"
+DOCK_VERSION = "$$system(git describe --match "v[0-9]*" --tags HEAD --always)"
+DEFINES += PLUGIN_VERSION=\\\"$$DOCK_VERSION\\\"
 
 TEMPLATE  = lib
 CONFIG   += plugin
