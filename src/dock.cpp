@@ -1,5 +1,6 @@
 /******************************************************************************
  *
+ * Copyright (C) 2020 Markus Zehnder <business@markuszehnder.ch>
  * Copyright (C) 2019 Marton Borzak <hello@martonborzak.com>
  * Copyright (C) 2019 Christian Riedl <ric@rts.co.at>
  *
@@ -38,9 +39,9 @@ void DockPlugin::create(const QVariantMap &config, EntitiesInterface *entities, 
                         YioAPIInterface *api, ConfigInterface *configObj) {
     qCInfo(m_logCategory) << "Creating Dock integration plugin" << PLUGIN_VERSION;
 
-    QString  mdns         = "_yio-dock-api._tcp";
+    QString  mdns = "_yio-dock-api._tcp";
     QTimer * timeOutTimer = new QTimer();
-    QObject *context      = new QObject();
+    QObject *context = new QObject();
 
     connect(api, &YioAPIInterface::serviceDiscovered, context, [=](QMap<QString, QVariantMap> services) {
         timeOutTimer->stop();
@@ -57,7 +58,7 @@ void DockPlugin::create(const QVariantMap &config, EntitiesInterface *entities, 
         // FIXME clean up friendlyName and integrationId!
         for (i = services.begin(); i != services.end(); i++) {
             QString integrationId = i.value().value("name").toString();
-            QString friendlyName  = i.value().value("txt").toMap().value("FriendlyName").toString();
+            QString friendlyName = i.value().value("txt").toMap().value("FriendlyName").toString();
             if (friendlyName.isEmpty()) {
                 friendlyName = i.value().value("name").toString();
             }
@@ -106,9 +107,9 @@ void DockPlugin::create(const QVariantMap &config, EntitiesInterface *entities, 
 Dock::Dock(const QVariantMap &config, const QVariantMap &mdns, EntitiesInterface *entities,
            NotificationsInterface *notifications, YioAPIInterface *api, ConfigInterface *configObj, Plugin *plugin)
     : Integration(config, entities, notifications, api, configObj, plugin) {
-    m_ip       = mdns.value("ip").toString();
-    m_token    = "0";
-    m_id       = mdns.value("name").toString();
+    m_ip = mdns.value("ip").toString();
+    m_token = "0";
+    m_id = mdns.value("name").toString();
     m_entities = entities;
 
     m_wsReconnectTimer = new QTimer();
@@ -279,7 +280,7 @@ void Dock::sendCommand(const QString &type, const QString &entity_id, int comman
 
     if (type == "remote") {
         // get the remote enityt from the entity database
-        EntityInterface *entity          = m_entities->getEntityInterface(entity_id);
+        EntityInterface *entity = m_entities->getEntityInterface(entity_id);
         RemoteInterface *remoteInterface = static_cast<RemoteInterface *>(entity->getSpecificInterface());
 
         // get all the commands the entity can do (IR codes)
@@ -287,7 +288,7 @@ void Dock::sendCommand(const QString &type, const QString &entity_id, int comman
 
         // find the IR code that matches the command we got from the UI
         QString     commandText = entity->getCommandName(command);
-        QStringList IRcommand   = findIRCode(commandText, commands);
+        QStringList IRcommand = findIRCode(commandText, commands);
 
         if (IRcommand[0] != "") {
             // send the request to the dock
@@ -296,7 +297,7 @@ void Dock::sendCommand(const QString &type, const QString &entity_id, int comman
             msg.insert("command", QVariant("ir_send"));
             msg.insert("code", IRcommand[0]);
             msg.insert("format", IRcommand[1]);
-            QJsonDocument doc     = QJsonDocument::fromVariant(msg);
+            QJsonDocument doc = QJsonDocument::fromVariant(msg);
             QString       message = doc.toJson(QJsonDocument::JsonFormat::Compact);
 
             // send the message through the websocket api
@@ -310,14 +311,14 @@ void Dock::sendCommand(const QString &type, const QString &entity_id, int comman
             QVariantMap msg;
             msg.insert("type", QVariant("dock"));
             msg.insert("command", QVariant("remote_charged"));
-            QJsonDocument doc     = QJsonDocument::fromVariant(msg);
+            QJsonDocument doc = QJsonDocument::fromVariant(msg);
             QString       message = doc.toJson(QJsonDocument::JsonFormat::Compact);
             m_webSocket->sendTextMessage(message);
         } else if (command == RemoteDef::C_REMOTE_LOWBATTERY) {
             QVariantMap msg;
             msg.insert("type", QVariant("dock"));
             msg.insert("command", QVariant("remote_lowbattery"));
-            QJsonDocument doc     = QJsonDocument::fromVariant(msg);
+            QJsonDocument doc = QJsonDocument::fromVariant(msg);
             QString       message = doc.toJson(QJsonDocument::JsonFormat::Compact);
             m_webSocket->sendTextMessage(message);
         }
@@ -335,8 +336,9 @@ QStringList Dock::findIRCode(const QString &feature, const QVariantList &list) {
         }
     }
 
-    if (r.length() == 0)
+    if (r.length() == 0) {
         r.append("");
+    }
 
     return r;
 }

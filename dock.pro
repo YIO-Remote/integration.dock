@@ -1,13 +1,13 @@
+TEMPLATE  = lib
+CONFIG   += plugin
+QT       += websockets core quick
+
 # Plugin VERSION
 GIT_HASH = "$$system(git log -1 --format="%H")"
 GIT_BRANCH = "$$system(git rev-parse --abbrev-ref HEAD)"
 GIT_VERSION = "$$system(git describe --match "v[0-9]*" --tags HEAD --always)"
 DOCK_VERSION = $$replace(GIT_VERSION, v, "")
 DEFINES += PLUGIN_VERSION=\\\"$$DOCK_VERSION\\\"
-
-TEMPLATE  = lib
-CONFIG   += plugin
-QT       += websockets core quick
 
 # build timestamp
 win32 {
@@ -21,7 +21,6 @@ CONFIG(debug, debug|release) {
 } else {
     DEBUG_BUILD = false
 }
-
 
 INTG_LIB_PATH = $$(YIO_SRC)
 isEmpty(INTG_LIB_PATH) {
