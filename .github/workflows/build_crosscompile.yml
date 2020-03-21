@@ -22,7 +22,7 @@ env:
 
 jobs:
   cross_compile:
-    name: RPi Zero YIO remote-os
+    name: RPi0 YIO remote-os
     runs-on: ubuntu-latest
     steps:
       - name: Checkout integration plugin
@@ -60,6 +60,8 @@ jobs:
           CPU_CORES=$(getconf _NPROCESSORS_ONLN)
           echo "Numbers of CPU cores for make: $CPU_CORES"
           make -j$CPU_CORES
+          cp dock.json ${{ env.YIO_BIN }}
+          cp version.txt ${{ env.YIO_BIN }}
           echo "GitHub Actions debug build
           $(date)
           GIT branch: $(git rev-parse --abbrev-ref HEAD)
@@ -104,6 +106,8 @@ jobs:
           CPU_CORES=$(getconf _NPROCESSORS_ONLN)
           echo "Numbers of CPU cores for make: $CPU_CORES"
           make -j$CPU_CORES
+          cp dock.json ${{ env.YIO_BIN }}
+          cp version.txt ${{ env.YIO_BIN }}
           echo "GitHub Actions release build
           $(date)
           GIT branch: $(git rev-parse --abbrev-ref HEAD)
