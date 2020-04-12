@@ -4,12 +4,12 @@ name: Code Guidelines
 on:
   push:
     paths:
-      - sources/**.cpp
-      - sources/**.h
+      - src/**.cpp
+      - src/**.h
   pull_request:
     paths:
-      - sources/**.cpp
-      - sources/**.h
+      - src/**.cpp
+      - src/**.h
 
 jobs:
   cpplint:

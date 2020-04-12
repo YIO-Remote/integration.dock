@@ -1,6 +1,6 @@
-[![Cross Compile](https://github.com/YIO-Remote/integration.dock/workflows/Cross%20Compile/badge.svg)](https://github.com/YIO-Remote/integration.dock/actions?query=workflow%3A%22Cross+Compile%22)
+[![Cross Compile & Release](https://github.com/YIO-Remote/integration.dock/workflows/Cross%20Compile%20&%20Release/badge.svg)](https://github.com/YIO-Remote/integration.dock/actions?query=workflow%3A%22Cross+Compile+%26+Release%22)
 [![Code Guidelines](https://github.com/YIO-Remote/integration.dock/workflows/Code%20Guidelines/badge.svg)](https://github.com/YIO-Remote/integration.dock/actions?query=workflow%3A%22Code+Guidelines%22)
-[![Desktop Builds](https://github.com/YIO-Remote/integration.dock/workflows/QMake%20Build%20Matrix/badge.svg)](https://github.com/YIO-Remote/integration.dock/actions?query=workflow%3A%22QMake+Build+Matrix%22)
+[![Build Desktop Libraries](https://github.com/YIO-Remote/integration.dock/workflows/Build%20Desktop%20Libraries/badge.svg)](https://github.com/YIO-Remote/integration.dock/actions?query=workflow%3A%22Build+Desktop+Libraries%22)
 
 # YIO Dock Repository
 
