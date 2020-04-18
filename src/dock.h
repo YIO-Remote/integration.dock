@@ -83,7 +83,7 @@ class Dock : public Integration {
     Q_INVOKABLE void disconnect() override;
     Q_INVOKABLE void enterStandby() override;
     Q_INVOKABLE void leaveStandby() override;
-    Q_INVOKABLE void sendCommand(const QString& type, const QString& entity_id, int command,
+    Q_INVOKABLE void sendCommand(const QString& type, const QString& entityId, int command,
                                  const QVariant& param) override;
 
  public slots:  // NOLINT open issue: https://github.com/cpplint/cpplint/pull/99
@@ -104,8 +104,8 @@ class Dock : public Integration {
     QWebSocket* m_webSocket;
     QTimer*     m_wsReconnectTimer;
     int         m_tries;
-    bool        m_userDisconnect = false;
+    bool        m_userDisconnect         = false;
     int         m_heartbeatCheckInterval = 30000;
-    QTimer*     m_heartbeatTimer = new QTimer(this);
-    QTimer*     m_heartbeatTimeoutTimer = new QTimer(this);
+    QTimer*     m_heartbeatTimer         = new QTimer(this);
+    QTimer*     m_heartbeatTimeoutTimer  = new QTimer(this);
 };
