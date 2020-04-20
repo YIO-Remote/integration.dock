@@ -218,6 +218,8 @@ void Dock::onTimeout() {
     }
 }
 
+void Dock::onLowBattery() { sendCommand("dock", "", RemoteDef::C_REMOTE_LOWBATTERY, ""); }
+
 void Dock::connect() {
     qCDebug(m_logCategory) << "connect!";
 
