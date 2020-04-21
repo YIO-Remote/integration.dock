@@ -79,18 +79,19 @@ class Dock : public Integration {
                   NotificationsInterface* notifications, YioAPIInterface* api, ConfigInterface* configObj,
                   Plugin* plugin);
 
-    Q_INVOKABLE void connect() override;
-    Q_INVOKABLE void disconnect() override;
-    Q_INVOKABLE void enterStandby() override;
-    Q_INVOKABLE void leaveStandby() override;
-    Q_INVOKABLE void sendCommand(const QString& type, const QString& entity_id, int command,
-                                 const QVariant& param) override;
+    void sendCommand(const QString& type, const QString& entityId, int command, const QVariant& param) override;
 
  public slots:  // NOLINT open issue: https://github.com/cpplint/cpplint/pull/99
+    void connect() override;
+    void disconnect() override;
+    void enterStandby() override;
+    void leaveStandby() override;
+
     void onTextMessageReceived(const QString& message);
     void onStateChanged(QAbstractSocket::SocketState state);
     void onError(QAbstractSocket::SocketError error);
     void onTimeout();
+    void onLowBattery();
 
  private:
     void        updateEntity(const QString& entity_id, const QVariantMap& attr);
@@ -104,8 +105,8 @@ class Dock : public Integration {
     QWebSocket* m_webSocket;
     QTimer*     m_wsReconnectTimer;
     int         m_tries;
-    bool        m_userDisconnect = false;
+    bool        m_userDisconnect         = false;
     int         m_heartbeatCheckInterval = 30000;
-    QTimer*     m_heartbeatTimer = new QTimer(this);
-    QTimer*     m_heartbeatTimeoutTimer = new QTimer(this);
+    QTimer*     m_heartbeatTimer         = new QTimer(this);
+    QTimer*     m_heartbeatTimeoutTimer  = new QTimer(this);
 };
