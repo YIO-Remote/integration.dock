@@ -32,5 +32,6 @@
   \"dependencies\" : [
       { \"name\" : \"app\", \"version\" : \"0.2.0\" },
       { \"name\" : \"remoteOS\", \"version\" : \"0.2.0\" }
-  ]
+  ],
+  \"mdns\": \"_yio-dock-api._tcp.\"
 }
