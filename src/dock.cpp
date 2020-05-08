@@ -97,7 +97,7 @@ void DockPlugin::create(const QVariantMap &config, EntitiesInterface *entities, 
         timeOutTimer->deleteLater();
         context->deleteLater();
     });
-    timeOutTimer->start(5000);
+    timeOutTimer->start(10000);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
