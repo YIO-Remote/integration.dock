@@ -69,7 +69,7 @@ class DockPlugin : public Plugin {
     void scanForDocks(const QVariantMap& config, EntitiesInterface* entities, NotificationsInterface* notifications,
                       YioAPIInterface* api, ConfigInterface* configObj);
 
- private slots:
+ private slots:  // NOLINT open issue: https://github.com/cpplint/cpplint/pull/99
     void onEnteredStandby();
     void onLeftStandby();
 
