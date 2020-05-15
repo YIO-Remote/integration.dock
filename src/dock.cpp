@@ -39,37 +39,55 @@ void DockPlugin::create(const QVariantMap &config, EntitiesInterface *entities, 
                         YioAPIInterface *api, ConfigInterface *configObj) {
     qCInfo(m_logCategory) << "Creating Dock integration plugin" << PLUGIN_VERSION;
 
+    scanForDocks(config, entities, notifications, api, configObj);
+
+    // start scanning for docks
+    m_scanForDocksTimer->setInterval(30000);
+    QObject::connect(m_scanForDocksTimer, &QTimer::timeout, this, [=]() {
+        qCDebug(m_logCategory) << "Scanning for docks";
+        scanForDocks(config, entities, notifications, api, configObj);
+    });
+
+    m_scanForDocksTimer->start();
+}
+
+void DockPlugin::scanForDocks(const QVariantMap &config, EntitiesInterface *entities,
+                              NotificationsInterface *notifications, YioAPIInterface *api, ConfigInterface *configObj) {
     QString  mdns         = "_yio-dock-api._tcp";
     QTimer * timeOutTimer = new QTimer();
     QObject *context      = new QObject();
 
-    connect(api, &YioAPIInterface::serviceDiscovered, context, [=](QMap<QString, QVariantMap> services) {
+    connect(api, &YioAPIInterface::serviceDiscovered, context, [=](QVariantMap services) {
         timeOutTimer->stop();
         timeOutTimer->deleteLater();
 
         QMap<QObject *, QVariant> returnData;
         QVariantList              data;
         QVariantMap               conf = config;
+        QString                   friendlyName;
 
         qCDebug(m_logCategory) << "Docks discovered: " << services;
 
         // let's go through the returned list of discovered docks
-        QMap<QString, QVariantMap>::iterator i;
+        QVariantMap::iterator i;
         // FIXME clean up friendlyName and integrationId!
         for (i = services.begin(); i != services.end(); i++) {
-            QString integrationId = i.value().value("name").toString();
-            QString friendlyName  = i.value().value("txt").toMap().value("FriendlyName").toString();
+            QString integrationId = i.value().toMap().value("name").toString();
+            friendlyName          = i.value().toMap().value("txt").toMap().value("FriendlyName").toString();
             if (friendlyName.isEmpty()) {
-                friendlyName = i.value().value("name").toString();
+                friendlyName = i.value().toMap().value("name").toString();
             }
 
             conf.insert(Integration::KEY_ID, integrationId);
             conf.insert(Integration::KEY_FRIENDLYNAME, friendlyName);
 
             // FIXME make friendlyName & id required constructor parameters?
-            Dock *dock = new Dock(conf, i.value(), entities, notifications, api, configObj, this);
+            Dock *dock = new Dock(conf, i.value().toMap(), entities, notifications, api, configObj, this);
             dock->setFriendlyName(friendlyName);
             dock->setIntegrationId(integrationId);
+
+            QObject::connect(dock, &Dock::enteredStandby, this, &DockPlugin::onEnteredStandby);
+            QObject::connect(dock, &Dock::leftStandby, this, &DockPlugin::onLeftStandby);
 
             QVariantMap d;
             d.insert(Integration::KEY_ID, integrationId);
@@ -79,7 +97,12 @@ void DockPlugin::create(const QVariantMap &config, EntitiesInterface *entities, 
             returnData.insert(dock, d);
         }
 
-        emit createDone(returnData);
+        if (!m_foundDocks.contains(friendlyName)) {
+            m_foundDocks.append(friendlyName);
+            notifications->add(false, tr("YIO Dock found:").append(friendlyName));
+            emit createDone(returnData);
+        }
+
         context->deleteLater();
     });
 
@@ -92,12 +115,22 @@ void DockPlugin::create(const QVariantMap &config, EntitiesInterface *entities, 
         qCWarning(m_logCategory) << "Cannot find any YIO Docks.";
         QMap<QObject *, QVariant> returnData;
 
-        notifications->add(true, "Cannot find any YIO Docks.");
+        //        notifications->add(true, "Cannot find any YIO Docks.");
         emit createDone(returnData);
         timeOutTimer->deleteLater();
         context->deleteLater();
     });
     timeOutTimer->start(10000);
+}
+
+void DockPlugin::onEnteredStandby() {
+    qCDebug(m_logCategory) << "Stopping scan for docks.";
+    m_scanForDocksTimer->stop();
+}
+
+void DockPlugin::onLeftStandby() {
+    qCDebug(m_logCategory) << "Starting scanfor docks.";
+    m_scanForDocksTimer->start();
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -120,14 +153,12 @@ Dock::Dock(const QVariantMap &config, const QVariantMap &mdns, EntitiesInterface
     m_webSocket = new QWebSocket;
     m_webSocket->setParent(this);
 
-    QObject::connect(m_webSocket, SIGNAL(textMessageReceived(const QString &)), this,
-                     SLOT(onTextMessageReceived(const QString &)));
-    QObject::connect(m_webSocket, SIGNAL(error(QAbstractSocket::SocketError)), this,
-                     SLOT(onError(QAbstractSocket::SocketError)));
-    QObject::connect(m_webSocket, SIGNAL(stateChanged(QAbstractSocket::SocketState)), this,
-                     SLOT(onStateChanged(QAbstractSocket::SocketState)));
+    QObject::connect(m_webSocket, &QWebSocket::textMessageReceived, this, &Dock::onTextMessageReceived);
+    QObject::connect(m_webSocket, static_cast<void (QWebSocket::*)(QAbstractSocket::SocketError)>(&QWebSocket::error),
+                     this, &Dock::onError);
+    QObject::connect(m_webSocket, &QWebSocket::stateChanged, this, &Dock::onStateChanged);
 
-    QObject::connect(m_wsReconnectTimer, SIGNAL(timeout()), this, SLOT(onTimeout()));
+    QObject::connect(m_wsReconnectTimer, &QTimer::timeout, this, &Dock::onTimeout);
 
     // set up timer to check heartbeat
     m_heartbeatTimer->setInterval(m_heartbeatCheckInterval);
@@ -268,12 +299,14 @@ void Dock::enterStandby() {
     m_heartbeatTimer->stop();
     m_heartbeatTimeoutTimer->stop();
     qCDebug(m_logCategory) << "Stopped heartbeat timers";
+    emit enteredStandby();
 }
 
 void Dock::leaveStandby() {
     qCDebug(m_logCategory) << "Leaving standby";
     m_heartbeatTimer->start();
     qCDebug(m_logCategory) << "Started heartbeat timer";
+    emit leftStandby();
 }
 
 void Dock::sendCommand(const QString &type, const QString &entityId, int command, const QVariant &param) {

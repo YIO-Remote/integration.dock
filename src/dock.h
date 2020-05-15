@@ -65,6 +65,17 @@ class DockPlugin : public Plugin {
      */
     void create(const QVariantMap& config, EntitiesInterface* entities, NotificationsInterface* notifications,
                 YioAPIInterface* api, ConfigInterface* configObj) override;
+
+    void scanForDocks(const QVariantMap& config, EntitiesInterface* entities, NotificationsInterface* notifications,
+                      YioAPIInterface* api, ConfigInterface* configObj);
+
+ private slots:
+    void onEnteredStandby();
+    void onLeftStandby();
+
+ private:
+    QTimer*     m_scanForDocksTimer = new QTimer(this);
+    QStringList m_foundDocks;
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -80,6 +91,10 @@ class Dock : public Integration {
                   Plugin* plugin);
 
     void sendCommand(const QString& type, const QString& entityId, int command, const QVariant& param) override;
+
+ signals:
+    void enteredStandby();
+    void leftStandby();
 
  public slots:  // NOLINT open issue: https://github.com/cpplint/cpplint/pull/99
     void connect() override;
