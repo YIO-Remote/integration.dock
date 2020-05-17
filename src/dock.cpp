@@ -52,11 +52,11 @@ Dock::Dock(const QVariantMap &config, EntitiesInterface *entities, Notifications
     for (QVariantMap::const_iterator iter = config.begin(); iter != config.end(); ++iter) {
         if (iter.key() == Integration::OBJ_DATA) {
             QVariantMap map = iter.value().toMap();
-            m_ip            = map.value(Integration::KEY_DATA_IP).toString();
+            m_hostname      = map.value(Integration::KEY_DATA_IP).toString();
         }
     }
 
-    m_url = QString("ws://").append(m_ip).append(":946");
+    m_url = QString("ws://").append(m_hostname).append(":946");
 
     qRegisterMetaType<QAbstractSocket::SocketState>();
 
@@ -110,7 +110,7 @@ void Dock::onTextMessageReceived(const QString &message) {
     }
 
     if (type == "auth_ok") {
-        qCInfo(m_logCategory) << "Connection successful:" << friendlyName() << m_ip;
+        qCInfo(m_logCategory) << "Connection successful:" << friendlyName() << m_hostname;
         setState(CONNECTED);
         m_heartbeatTimer->start();
     }
@@ -141,7 +141,7 @@ void Dock::onTimeout() {
 
     if (m_tries == 3) {
         m_wsReconnectTimer->stop();
-        qCCritical(m_logCategory) << "Cannot connect to docking station: retried 3 times connecting to" << m_ip;
+        qCCritical(m_logCategory) << "Cannot connect to docking station: retried 3 times connecting to" << m_hostname;
 
         QObject *param = this;
         m_notifications->add(
