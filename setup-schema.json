@@ -13,7 +13,7 @@
         "ip": {
             "$id": "#/properties/ip",
             "type": "string",
-            "title": "The ip schema",
+            "title": "IP address or hostname",
             "description": "The IP address or hostname of your YIO Dock.",
             "default": "",
             "examples": [
