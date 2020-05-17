@@ -93,8 +93,8 @@ class Dock : public Integration {
     void        onHeartbeat();
     void        onHeartbeatTimeout();
 
-    QString     m_id;
     QString     m_ip;
+    QString     m_url;
     QString     m_token = "0";
     QWebSocket* m_webSocket;
     QTimer*     m_wsReconnectTimer;

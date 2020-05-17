@@ -56,6 +56,8 @@ Dock::Dock(const QVariantMap &config, EntitiesInterface *entities, Notifications
         }
     }
 
+    m_url = QString("ws://").append(m_ip).append(":946");
+
     qRegisterMetaType<QAbstractSocket::SocketState>();
 
     m_entities = entities;
@@ -108,7 +110,7 @@ void Dock::onTextMessageReceived(const QString &message) {
     }
 
     if (type == "auth_ok") {
-        qCInfo(m_logCategory) << "Connection successful:" << friendlyName() << m_ip << m_id;
+        qCInfo(m_logCategory) << "Connection successful:" << friendlyName() << m_ip;
         setState(CONNECTED);
         m_heartbeatTimer->start();
     }
@@ -156,9 +158,8 @@ void Dock::onTimeout() {
         if (m_state != CONNECTING) {
             setState(CONNECTING);
         }
-        QString url = QString("ws://").append(m_ip).append(":946");
-        qCInfo(m_logCategory) << "Reconnection attempt" << m_tries + 1 << "to docking station:" << url;
-        m_webSocket->open(QUrl(url));
+        qCInfo(m_logCategory) << "Reconnection attempt" << m_tries + 1 << "to docking station:" << m_url;
+        m_webSocket->open(QUrl(m_url));
 
         m_tries++;
     }
@@ -181,9 +182,8 @@ void Dock::connect() {
         m_webSocket->close();
     }
 
-    QString url = QString("ws://").append(m_ip).append(":946");
-    qCDebug(m_logCategory) << "Connecting to docking station:" << url;
-    m_webSocket->open(QUrl(url));
+    qCDebug(m_logCategory) << "Connecting to docking station:" << m_url;
+    m_webSocket->open(QUrl(m_url));
 }
 
 void Dock::disconnect() {

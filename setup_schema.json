@@ -1,0 +1,29 @@
+{
+    "$schema": "http://json-schema.org",
+    "$id": "http://yio-remote.com/yiodock.json",
+    "type": "object",
+    "title": "YIO Dock Integration Schema",
+    "description": "Required data points to set up a YIO Dock integration.",
+    "default": {},
+    "additionalProperties": true,
+    "examples": [
+        {
+            "ip": ""
+        }
+    ],
+    "required": [
+        "ip"
+    ],
+    "properties": {
+        "ip": {
+            "$id": "#/properties/ip",
+            "type": "string",
+            "title": "The ip schema",
+            "description": "The IP address or hostname of your YIO Dock.",
+            "default": "",
+            "examples": [
+                "192.168.100.2", "YIO-Dock-30AEA4D73C34.local"
+            ]
+        }
+    }
+}
