@@ -6,11 +6,6 @@
     "description": "Required data points to set up a YIO Dock integration.",
     "default": {},
     "additionalProperties": true,
-    "examples": [
-        {
-            "ip": ""
-        }
-    ],
     "required": [
         "ip"
     ],
