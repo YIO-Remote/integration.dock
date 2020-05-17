@@ -25,10 +25,8 @@
 #pragma once
 
 #include <QColor>
-#include <QLoggingCategory>
 #include <QObject>
 #include <QString>
-#include <QThread>
 #include <QTimer>
 #include <QVariant>
 #include <QtWebSockets/QWebSocket>
@@ -58,13 +56,10 @@ class DockPlugin : public Plugin {
     DockPlugin();
 
     // Plugin interface
-    /**
-     * @brief createIntegration Override default implementation in Plugin to allow MDNS discovery of multiple docks.
-     * @details The base class needs to be enhanced to handle non-configuration based integrations and multiple self
-     * discovered instances.
-     */
-    void create(const QVariantMap& config, EntitiesInterface* entities, NotificationsInterface* notifications,
-                YioAPIInterface* api, ConfigInterface* configObj) override;
+ protected:
+    Integration* createIntegration(const QVariantMap& config, EntitiesInterface* entities,
+                                   NotificationsInterface* notifications, YioAPIInterface* api,
+                                   ConfigInterface* configObj) override;
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -75,9 +70,8 @@ class Dock : public Integration {
     Q_OBJECT
 
  public:
-    explicit Dock(const QVariantMap& config, const QVariantMap& mdns, EntitiesInterface* entities,
-                  NotificationsInterface* notifications, YioAPIInterface* api, ConfigInterface* configObj,
-                  Plugin* plugin);
+    explicit Dock(const QVariantMap& config, EntitiesInterface* entities, NotificationsInterface* notifications,
+                  YioAPIInterface* api, ConfigInterface* configObj, Plugin* plugin);
 
     void sendCommand(const QString& type, const QString& entityId, int command, const QVariant& param) override;
 
@@ -99,9 +93,9 @@ class Dock : public Integration {
     void        onHeartbeat();
     void        onHeartbeatTimeout();
 
-    QString     m_id;
-    QString     m_ip;
-    QString     m_token;
+    QString     m_hostname;
+    QString     m_url;
+    QString     m_token = "0";
     QWebSocket* m_webSocket;
     QTimer*     m_wsReconnectTimer;
     int         m_tries;
