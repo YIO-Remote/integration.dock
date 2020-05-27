@@ -301,18 +301,5 @@ void Dock::onHeartbeat() {
 
 void Dock::onHeartbeatTimeout() {
     qCDebug(m_logCategory) << "Heartbeat timeout!";
-    disconnect();
-
-    qCDebug(m_logCategory) << "Creating notification";
-
-    QObject *param = this;
-    m_notifications->add(
-        true, tr("Connection dropped to ").append(friendlyName()).append("."), tr("Reconnect"),
-        [](QObject *param) {
-            Integration *i = qobject_cast<Integration *>(param);
-            i->connect();
-        },
-        param);
-
-    qCDebug(m_logCategory) << "Added notification";
+    onTimeout();
 }
