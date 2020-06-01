@@ -112,6 +112,7 @@ void Dock::onTextMessageReceived(const QString &message) {
     if (type == "auth_ok") {
         qCInfo(m_logCategory) << "Connection successful:" << friendlyName() << m_hostname;
         setState(CONNECTED);
+        m_tries = 0;
         m_heartbeatTimer->start();
     }
 
