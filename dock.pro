@@ -16,7 +16,7 @@ isEmpty(YIO_BUILD_VERSION) {
         GIT_BRANCH = "master"
     } else {
         # git hash as version = custom build
-        GIT_HASH = $$(YIO_BUILD_VERSION)
+        GIT_HASH = $$YIO_BUILD_VERSION
         GIT_BRANCH = ""
     }
 }
