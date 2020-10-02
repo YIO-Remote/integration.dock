@@ -4,19 +4,19 @@ QT       += websockets core quick
 
 # === Version and build information ===========================================
 # If built in Buildroot use custom package version, otherwise Git
-GIT_VERSION = $$(YIO_INTEGRATION_DOCK_VERSION)
-isEmpty(GIT_VERSION) {
+isEmpty(YIO_BUILD_VERSION) {
     GIT_VERSION = "$$system(git describe --match "v[0-9]*" --tags HEAD --always)"
     GIT_HASH = "$$system(git log -1 --format="%H")"
     GIT_BRANCH = "$$system(git rev-parse --abbrev-ref HEAD)"
 } else {
+    GIT_VERSION = $$YIO_BUILD_VERSION
     contains(GIT_VERSION, "^v?(0|[1-9]\d*)\..*") {
         # (simplified) version string = regular release
         GIT_HASH = ""
         GIT_BRANCH = "master"
     } else {
         # git hash as version = custom build
-        GIT_HASH = $$(YIO_INTEGRATION_DOCK_VERSION)
+        GIT_HASH = $$(YIO_BUILD_VERSION)
         GIT_BRANCH = ""
     }
 }
