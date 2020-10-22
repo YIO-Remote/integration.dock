@@ -52,7 +52,7 @@ Dock::Dock(const QVariantMap &config, EntitiesInterface *entities, Notifications
     for (QVariantMap::const_iterator iter = config.begin(); iter != config.end(); ++iter) {
         if (iter.key() == Integration::OBJ_DATA) {
             QVariantMap map = iter.value().toMap();
-            m_hostname      = map.value(Integration::KEY_DATA_IP).toString();
+            m_hostname = map.value(Integration::KEY_DATA_IP).toString();
         }
     }
 
@@ -166,7 +166,9 @@ void Dock::onTimeout() {
     }
 }
 
-void Dock::onLowBattery() { sendCommand("dock", "", RemoteDef::C_REMOTE_LOWBATTERY, ""); }
+void Dock::onLowBattery() {
+    sendCommand("dock", "", RemoteDef::C_REMOTE_LOWBATTERY, "");
+}
 
 void Dock::connect() {
     qCDebug(m_logCategory) << "connect!";
@@ -229,7 +231,7 @@ void Dock::sendCommand(const QString &type, const QString &entityId, int command
 
     if (type == "remote") {
         // get the remote enityt from the entity database
-        EntityInterface *entity          = m_entities->getEntityInterface(entityId);
+        EntityInterface *entity = m_entities->getEntityInterface(entityId);
         RemoteInterface *remoteInterface = static_cast<RemoteInterface *>(entity->getSpecificInterface());
 
         // get all the commands the entity can do (IR codes)
@@ -237,7 +239,7 @@ void Dock::sendCommand(const QString &type, const QString &entityId, int command
 
         // find the IR code that matches the command we got from the UI
         QString     commandText = entity->getCommandName(command);
-        QStringList IRcommand   = findIRCode(commandText, commands);
+        QStringList IRcommand = findIRCode(commandText, commands);
 
         if (IRcommand[0] != "") {
             // send the request to the dock
@@ -246,7 +248,7 @@ void Dock::sendCommand(const QString &type, const QString &entityId, int command
             msg.insert("command", QVariant("ir_send"));
             msg.insert("code", IRcommand[0]);
             msg.insert("format", IRcommand[1]);
-            QJsonDocument doc     = QJsonDocument::fromVariant(msg);
+            QJsonDocument doc = QJsonDocument::fromVariant(msg);
             QString       message = doc.toJson(QJsonDocument::JsonFormat::Compact);
 
             // send the message through the websocket api
@@ -260,14 +262,14 @@ void Dock::sendCommand(const QString &type, const QString &entityId, int command
             QVariantMap msg;
             msg.insert("type", QVariant("dock"));
             msg.insert("command", QVariant("remote_charged"));
-            QJsonDocument doc     = QJsonDocument::fromVariant(msg);
+            QJsonDocument doc = QJsonDocument::fromVariant(msg);
             QString       message = doc.toJson(QJsonDocument::JsonFormat::Compact);
             m_webSocket->sendTextMessage(message);
         } else if (command == RemoteDef::C_REMOTE_LOWBATTERY) {
             QVariantMap msg;
             msg.insert("type", QVariant("dock"));
             msg.insert("command", QVariant("remote_lowbattery"));
-            QJsonDocument doc     = QJsonDocument::fromVariant(msg);
+            QJsonDocument doc = QJsonDocument::fromVariant(msg);
             QString       message = doc.toJson(QJsonDocument::JsonFormat::Compact);
             m_webSocket->sendTextMessage(message);
         }
